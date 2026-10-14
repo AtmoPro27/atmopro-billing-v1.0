@@ -1,0 +1,125 @@
+/* Custom CSS untuk DEMO COMPANY - Tema HIJAU */
+:root {
+    --primary-green: #0d5c1e;
+    --secondary-green: #1a8a2d;
+    --light-green: #4caf50;
+    --dark-green: #064e15;
+}
+
+.brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-logo img {
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.brand-text {
+    line-height: 1.2;
+}
+
+.brand-name {
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.brand-tagline {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+/* Warna tema hijau */
+.bg-kasnet {
+    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+}
+
+.btn-kasnet {
+    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+    border: none;
+    color: white;
+}
+
+.btn-kasnet:hover {
+    background: linear-gradient(135deg, var(--secondary-green) 0%, var(--primary-green) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(13,92,30,0.3);
+}
+
+.text-kasnet {
+    color: var(--secondary-green);
+}
+
+/* Card styling */
+.card-dashboard {
+    border: none;
+    border-radius: 15px;
+    transition: all 0.3s;
+}
+
+.card-dashboard:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+/* Table styling */
+.table-custom thead {
+    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+    color: white;
+}
+
+.table-custom thead th {
+    border: none;
+    padding: 12px;
+}
+
+/* Sidebar active */
+.sidebar .nav-link.active {
+    background: linear-gradient(90deg, rgba(26,138,45,0.1), transparent);
+    color: var(--secondary-green);
+    border-left-color: var(--secondary-green);
+}
+
+.sidebar .nav-link:hover {
+    color: var(--secondary-green);
+    border-left-color: var(--secondary-green);
+}
+
+/* Navbar */
+.navbar-custom {
+    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+}
+
+/* Button */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--secondary-green) 0%, var(--primary-green) 100%);
+}
+
+/* Badge */
+.badge-success {
+    background-color: var(--secondary-green);
+}
+
+/* Pagination */
+.page-item.active .page-link {
+    background-color: var(--secondary-green);
+    border-color: var(--secondary-green);
+}
+
+/* Link */
+a {
+    color: var(--secondary-green);
+}
+
+a:hover {
+    color: var(--primary-green);
+}

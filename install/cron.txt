@@ -1,0 +1,75 @@
+# ============================================================
+# CRON JOBS — BILLING SYSTEM
+# ============================================================
+# Copy baris di bawah ke crontab server Anda:
+#   crontab -e
+#
+# GANTI:
+#   /path/to/billing  → path install Anda
+#   user_billing      → user PHP-FPM Anda
+#   php8.3            → versi PHP Anda
+# ============================================================
+
+# Update waktu online setiap 5 menit
+*/5 * * * * /usr/bin/php /path/to/billing/cron/update_online_time.php >> /var/log/billing_online_time.log 2>&1
+
+# Cek user PPPoE online setiap 5 menit (delay 30 detik)
+*/5 * * * * sleep 30; sudo -u user_billing /usr/bin/php8.3 /path/to/billing/cron/check_pppoe_online.php >> /var/log/billing_pppoe_online.log 2>&1
+
+# Update traffic setiap 15 menit
+*/15 * * * * /usr/bin/php /path/to/billing/cron/update_traffic_fixed.php >> /var/log/billing_traffic.log 2>&1
+
+# Auto invoice setiap tanggal 5 jam 00:01
+1 0 5 * * /usr/bin/php /path/to/billing/cron/auto_invoice.php >> /var/log/billing_auto_invoice.log 2>&1
+
+# Cek expired invoice setiap tanggal 21 jam 00:05
+5 0 * * * /usr/bin/php /path/to/billing/cron/disable_expired.php >> /var/log/billing_disable_expired.log 2>&1
+
+# Disable & remove active connection untuk pelanggan isolir (setiap tanggal 21 jam 00:05)
+*/5 * * * * /usr/bin/php /path/to/billing/cron/disable_isolir_router.php >> /var/log/billing_disable_isolir.log 2>&1
+
+# Aktifkan pelanggan active di router (setiap 5 menit)
+*/5 * * * * /usr/bin/php /path/to/billing/cron/enable_active_router.php >> /var/log/billing_enable_active.log 2>&1
+
+# Reset akumulasi setiap tanggal 21 jam 00:05
+5 0 21 * * /usr/bin/php /path/to/billing/cron/reset_akumulasi.php >> /var/log/billing_reset_akumulasi.log 2>&1
+
+# Cek status router setiap 5 menit (dengan delay 10 detik)
+*/5 * * * * sleep 10; /usr/bin/php /path/to/billing/cron/check_router_status.php >> /var/log/billing_router_status.log 2>&1
+
+# Auto pengeluaran rutin & bagi hasil setiap tanggal 25 jam 00:01
+1 0 25 * * /usr/bin/php /path/to/billing/cron/auto_pengeluaran.php >> /var/log/billing_auto_pengeluaran.log 2>&1
+
+# Reset waktu online setiap tanggal 21 jam 00:01
+1 0 21 * * /usr/bin/php /path/to/billing/cron/reset_online_time.php >> /var/log/billing_reset_online.log 2>&1
+
+# Cek jatuh tempo pelanggan setiap jam
+0 * * * * /usr/bin/php /path/to/billing/cron/cek_jatuh_tempo.php >> /var/log/billing_jatuh_tempo.log 2>&1
+
+# Sync serial number dari GenieACS setiap jam
+0 * * * * /usr/bin/php /path/to/billing/cron/sync_serial_from_genieacs.php >> /var/log/billing_sync_serial.log 2>&1
+
+# Update online status dari MikroTik (delay 40s)
+*/5 * * * * sleep 40; /usr/bin/php /path/to/billing/cron/update_online_status_all.php >> /var/log/billing_online_status.log 2>&1
+
+# Cek alarm gangguan (delay 60s)
+*/5 * * * * sleep 60; /usr/bin/php /path/to/billing/cron/alarm_gangguan.php >> /var/log/billing_alarm.log 2>&1
+
+# Sync GenieACS Device ID setiap 30 menit
+*/30 * * * * /usr/bin/php /path/to/billing/cron/sync_genieacs_id.php >> /var/log/billing_sync_genieacs.log 2>&1
+
+# Cleanup GenieACS tasks setiap jam
+0 * * * * /usr/bin/php /path/to/billing/cron/cleanup_genieacs_tasks.php >> /var/log/billing_cleanup_tasks.log 2>&1
+
+# Cek GenieACS setiap 5 menit
+*/5 * * * * /usr/bin/php /path/to/billing/cron/check_genieacs.php >> /var/log/billing_genieacs_check.log 2>&1
+
+# Cleanup log GenieACS setiap hari jam 3 pagi
+0 3 * * * /usr/bin/php /path/to/billing/cron/cleanup_settings_log.php >> /var/log/billing_cleanup_settings.log 2>&1
+
+# Bersihkan session PHP yang kadaluarsa (>60 menit)
+*/30 * * * * find /var/lib/php/sessions -name "sess_*" -mmin +60 -delete 2>/dev/null
+
+# ============================================================
+# END OF CRON JOBS
+# ============================================================

@@ -1,0 +1,130 @@
+<?php
+require_once __DIR__ . '/../../includes/auth_check.php';
+
+$id = $_GET['id'] ?? '';
+if (empty($id)) {
+    header("Location: index.php");
+    exit();
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    try {
+        require_once __DIR__ . "/../../config/database.php";
+$pdo = Database::getInstance()->getConnection();
+
+        $tgl_bayar = $_POST['tgl_bayar'];
+
+        // Ambil no_invoice sebelum update
+        $stmt = $pdo->prepare("SELECT no_invoice, pelanggan_id FROM invoice WHERE id = ?");
+        $stmt->execute([$id]);
+        $invoice_data = $stmt->fetch();
+        $no_invoice = $invoice_data['no_invoice'];
+        $pelanggan_id = $invoice_data['pelanggan_id'];
+
+        $stmt = $pdo->prepare("UPDATE invoice SET status = 'paid', tgl_bayar = ? WHERE id = ?");
+        $stmt->execute([$tgl_bayar, $id]);
+
+        // Catat log pembayaran
+        include '../../includes/activity_log.php';
+        log_admin_activity($pdo, 'INVOICE_PAID', 'invoice', $no_invoice, 'Menandai invoice sebagai LUNAS');
+
+        $stmt = $pdo->prepare("SELECT pelanggan_id FROM invoice WHERE id = ?");
+        $stmt->execute([$id]);
+        $invoice = $stmt->fetch();
+
+        if ($invoice) {
+            // Perpanjang jatuh tempo +1 bulan dan aktifkan status
+            $stmt = $pdo->prepare("
+                UPDATE pelanggan
+                SET jatuh_tempo = DATE_ADD(DATE(jatuh_tempo), INTERVAL 1 MONTH) + INTERVAL 23 HOUR + INTERVAL 59 MINUTE + INTERVAL 59 SECOND,
+                    status = 'active'
+                WHERE id = ?
+            ");
+            $stmt->execute([$invoice['pelanggan_id']]);
+
+            // Aktifkan user di Mikrotik via API
+            require_once __DIR__ . '/../../includes/mikrotik_api.php';
+            
+            $stmt = $pdo->prepare("
+                SELECT p.id_pelanggan, pk.router_id
+                FROM pelanggan p
+                LEFT JOIN paket_internet pk ON p.paket_id = pk.id
+                WHERE p.id = ?
+            ");
+            $stmt->execute([$invoice['pelanggan_id']]);
+            $customer = $stmt->fetch();
+
+            if ($customer && $customer['router_id']) {
+                $username_pppoe = $customer['id_pelanggan'];
+                $router_id = $customer['router_id'];
+                
+                // Enable user via API
+                $result = enable_pppoe_user($router_id, $username_pppoe);
+                error_log("[PAY] Enable user {$username_pppoe}: " . json_encode($result));
+            }
+        }
+
+        header("Location: print_invoice.php?id=" . $id . "&success=1");
+        exit();
+
+    } catch(PDOException $e) {
+        $error = "Gagal: " . $e->getMessage();
+    }
+}
+
+try {
+    require_once __DIR__ . "/../../config/database.php";
+$pdo = Database::getInstance()->getConnection();
+
+    $stmt = $pdo->prepare("SELECT i.*, p.nama_lengkap FROM invoice i LEFT JOIN pelanggan p ON i.pelanggan_id = p.id WHERE i.id = ?");
+    $stmt->execute([$id]);
+    $invoice = $stmt->fetch();
+
+    if (!$invoice) {
+        header("Location: index.php");
+        exit();
+    }
+
+    if ($invoice['status'] == 'paid') {
+        header("Location: print_invoice.php?id=" . $id);
+        exit();
+    }
+
+} catch(PDOException $e) {
+    $error_db = $e->getMessage();
+}
+
+include '../../includes/header.php';
+?>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-money-bill"></i> Catat Pembayaran
+        <a href="view.php?id=<?= $id ?>" class="btn btn-secondary btn-sm float-end">Kembali</a>
+    </div>
+    <div class="card-body">
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+        <?php endif; ?>
+
+        <div class="alert alert-info">
+            <strong>No Invoice:</strong> <?= htmlspecialchars($invoice['no_invoice']) ?><br>
+            <strong>Pelanggan:</strong> <?= htmlspecialchars($invoice['nama_lengkap'] ?? '-') ?><br>
+            <strong>Jumlah:</strong> Rp <?= number_format($invoice['jumlah'], 0, ',', '.') ?>
+        </div>
+
+        <form method="POST">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Tanggal Bayar <span class="text-danger">*</span></label>
+                    <input type="datetime-local" name="tgl_bayar" class="form-control" required  value="<?= htmlspecialchars(date('Y-m-d\TH:i')) ?>">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success"><i class="fas fa-check-circle"></i> Konfirmasi Pembayaran</button>
+            <a href="view.php?id=<?= $id ?>" class="btn btn-secondary">Batal</a>
+        </form>
+    </div>
+</div>
+
+<?php include '../../includes/footer.php'; ?>

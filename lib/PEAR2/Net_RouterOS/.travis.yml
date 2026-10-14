@@ -1,0 +1,52 @@
+#
+# Travis-CI is currently disabled due to difficulties with Qemu,
+# combined with the inability to use VirtualBox instead.
+#
+language: php
+php:
+  - 5.3.3
+  - 5.3
+  - 5.4.0
+  - 5.4
+  - 5.5.0
+  - 5.5
+  - 5.6.0
+  # There are some known issues with streaming in the latest 5.6 versions.
+  #- 5.6
+env:
+  - ROS_VERSION=6.29.1 ROS_HASH=b8f3c93d9f139ee0deba74088c3ceab9
+addons:
+  hosts:
+    - 192.168.56.101 ros.example.com
+    - 192.168.56.2   invalid.ros.example.com
+    - 192.168.56.98  silent.ros.example.com
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install unzip
+  - wget -O ~/packer.zip https://dl.bintray.com/mitchellh/packer/packer_0.7.5_linux_amd64.zip
+install:
+  # Install Packer
+  - unzip ~/packer.zip -d ~/packer
+  - export PATH=$PATH:~/packer
+  # Install Apache
+  - sudo apt-get install apache2
+  # Install Qemu
+  - sudo apt-get install qemu
+before_script:
+  # Setup VM
+  - cd tests/vm
+  - packer build -only=qemu -var "v=${ROS_VERSION}" -var "h=${ROS_HASH}" RouterOS.packer.json
+  - cd ../..
+  # Setup PHP dependencies
+  - composer self-update
+  - composer require pear2/net_transmitter:dev-develop
+  - composer install
+  # Configure Apache
+  - echo "Listen 8728" >> /etc/apache2/ports.conf
+  - echo "Listen 8729" >> /etc/apache2/ports.conf
+script:
+  - sudo service apache2 restart
+  - cd tests
+  - vm/RouterOS.qemu.sh &
+  - sleep 20
+  - ../vendor/bin/phpunit

@@ -1,0 +1,65 @@
+/* Logo Style untuk DEMO COMPANY */
+.kasnet-logo {
+    text-align: center;
+    font-family: 'Arial Black', 'Segoe UI Black', sans-serif;
+}
+
+.kasnet-logo-main {
+    font-size: 48px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    line-height: 1;
+}
+
+.kasnet-logo-main span.kas {
+    color: #ffd700;
+    -webkit-text-fill-color: #ffd700;
+}
+
+.kasnet-logo-main span.net {
+    color: #ffed4a;
+    -webkit-text-fill-color: #ffed4a;
+}
+
+.kasnet-tagline {
+    font-size: 9px;
+    letter-spacing: 3px;
+    font-weight: 600;
+    color: #c8e6c9;
+    margin-top: 5px;
+    text-transform: uppercase;
+}
+
+/* Untuk login page */
+.login-logo {
+    text-align: center;
+}
+
+.login-logo .big-kasnet {
+    font-size: 42px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #ffd700, #ffed4a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: 4px;
+}
+
+.login-logo .big-kasnet .kas {
+    color: #ffd700;
+}
+
+.login-logo .big-kasnet .net {
+    color: #ffed4a;
+}
+
+.login-logo .tagline {
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.8);
+}
