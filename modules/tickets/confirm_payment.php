@@ -36,10 +36,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['confirm_payment'])) {
         $stmt->execute([$_SESSION['username'] ?? 'system', $invoice['id']]);
         error_log("Invoice updated to paid");
 
-        // Update jatuh tempo pelanggan +1 bulan
-        $stmt = $pdo->prepare("UPDATE pelanggan SET jatuh_tempo = DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-20'), INTERVAL 1 MONTH) + INTERVAL 23 HOUR + INTERVAL 59 MINUTE + INTERVAL 59 SECOND WHERE id = ?");
-        $stmt->execute([$invoice['pelanggan_id']]);
-        error_log("Jatuh tempo updated");
+        // Update jatuh tempo pelanggan (logika sama dengan pay.php)
+        // - Invoice terbit bulan ini (invoice baru) => jatuh tempo bulan depan tgl 20
+        // - Invoice terbit bulan lalu (nunggakan):
+        //   * Bayar tgl 1-14 => jatuh tempo bulan ini tgl 20
+        //   * Bayar tgl 15+  => jatuh tempo bulan depan tgl 20
+        $stmt_terbit = $pdo->prepare("SELECT tgl_terbit FROM invoice WHERE id = ?");
+        $stmt_terbit->execute([$invoice['id']]);
+        $tgl_terbit = $stmt_terbit->fetchColumn();
+
+        $bulan_terbit = date('Y-m', strtotime($tgl_terbit));
+        $bulan_ini    = date('Y-m');
+        $hari_ini     = (int)date('j');
+
+        if ($bulan_terbit === $bulan_ini) {
+            $jatuh_tempo_baru = date('Y-m-20 23:59:59', strtotime('+1 month'));
+        } else {
+            if ($hari_ini <= 14) {
+                $jatuh_tempo_baru = date('Y-m-20 23:59:59');
+            } else {
+                $jatuh_tempo_baru = date('Y-m-20 23:59:59', strtotime('+1 month'));
+            }
+        }
+
+        // Simpan jatuh tempo lama untuk restore saat batal bayar
+        $stmt_old = $pdo->prepare("SELECT jatuh_tempo FROM pelanggan WHERE id = ?");
+        $stmt_old->execute([$invoice['pelanggan_id']]);
+        $old_due = $stmt_old->fetchColumn();
+        if ($old_due) {
+            $stmt_save = $pdo->prepare("UPDATE invoice SET jatuh_tempo_sebelum = ? WHERE id = ?");
+            $stmt_save->execute([$old_due, $invoice['id']]);
+        }
+
+        $stmt = $pdo->prepare("UPDATE pelanggan SET jatuh_tempo = ? WHERE id = ?");
+        $stmt->execute([$jatuh_tempo_baru, $invoice['pelanggan_id']]);
+        error_log("Jatuh tempo updated: $jatuh_tempo_baru");
 
         // ============================================
         // TAMBAHAN: Update customers & enable router
