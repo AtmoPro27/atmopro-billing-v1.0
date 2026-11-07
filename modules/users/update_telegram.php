@@ -88,7 +88,7 @@ include '../../includes/header.php';
                     <h6><i class="fas fa-info-circle"></i> Cara Mendapatkan Chat ID:</h6>
                     <ol>
                         <li>Buka Telegram di HP/Desktop</li>
-                        <li>Cari bot: <strong>@klasnet_billing_bot</strong></li>
+                        <li>Cari bot: <strong>@your_bot_username</strong></li>
                         <li>Kirim pesan: <strong>Halo</strong> atau <strong>Test</strong></li>
                         <li>Chat ID akan otomatis terdeteksi</li>
                         <li>Atau masukkan manual di form bawah</li>
@@ -96,7 +96,7 @@ include '../../includes/header.php';
                     <hr>
                     <small>
                         <i class="fas fa-link"></i> Link bot: 
-                        <a href="https://t.me/klasnet_billing_bot" target="_blank">https://t.me/klasnet_billing_bot</a>
+                        <a href="https://t.me/your_bot_username" target="_blank">https://t.me/your_bot_username</a>
                     </small>
                 </div>
             </div>

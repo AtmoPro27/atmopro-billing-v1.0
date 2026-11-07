@@ -1,9 +1,5 @@
 <?php
-require_once __DIR__ . "/../../includes/session_check.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
-    exit();
-}
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 include '../../includes/header.php';
 
@@ -437,6 +433,7 @@ try {
                                 <th>Invoice WiFi</th>
                                 <th>Income Manual</th>
                                 <th>Total Pendapatan</th>
+                <th class="text-center">Naik/Turun</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -477,6 +474,34 @@ try {
                                 }
                                 
                                 if (count($bulan_data) > 0) {
+                                    // Hitung total per bulan
+                                    $totals = [];
+                                    foreach ($bulan_data as $bulan => $data) {
+                                        $totals[$bulan] = $data['invoice'] + $data['manual'];
+                                    }
+                                    
+                                    // Urutkan DESC (terbaru dulu) — sudah dari query
+                                    // Untuk hitung persentase, kita perlu bulan sebelumnya (yang lebih lama)
+                                    $bulan_keys = array_keys($bulan_data); // sudah DESC
+                                    
+                                    // Hitung persentase: bandingkan dengan bulan sebelumnya (index +1)
+                                    $persen_data = [];
+                                    foreach ($bulan_keys as $i => $bulan) {
+                                        if (isset($bulan_keys[$i + 1])) {
+                                            $prev_bulan = $bulan_keys[$i + 1];
+                                            $prev_total = $totals[$prev_bulan];
+                                            $curr_total = $totals[$bulan];
+                                            
+                                            if ($prev_total > 0) {
+                                                $persen_data[$bulan] = round((($curr_total - $prev_total) / $prev_total) * 100, 1);
+                                            } else {
+                                                $persen_data[$bulan] = null;
+                                            }
+                                        } else {
+                                            $persen_data[$bulan] = null;
+                                        }
+                                    }
+                                    
                                     foreach ($bulan_data as $bulan => $data) {
                                         $bulan_nama = date('M Y', strtotime($bulan . '-01'));
                                         $total = $data['invoice'] + $data['manual'];
@@ -485,10 +510,26 @@ try {
                                         echo '<td>Rp ' . number_format($data['invoice'], 0, ',', '.') . '</td>';
                                         echo '<td>Rp ' . number_format($data['manual'], 0, ',', '.') . '</td>';
                                         echo '<td><strong>Rp ' . number_format($total, 0, ',', '.') . '</strong></td>';
+                                        
+                                        // Kolom Naik/Turun
+                                        echo '<td class="text-center">';
+                                        $persen = $persen_data[$bulan] ?? null;
+                                        if ($persen !== null) {
+                                            if ($persen > 0) {
+                                                echo '<span class="text-success"><i class="fas fa-arrow-up"></i> ' . $persen . '%</span>';
+                                            } elseif ($persen < 0) {
+                                                echo '<span class="text-danger"><i class="fas fa-arrow-down"></i> ' . abs($persen) . '%</span>';
+                                            } else {
+                                                echo '<span class="text-muted"><i class="fas fa-minus"></i> 0%</span>';
+                                            }
+                                        } else {
+                                            echo '<span class="text-muted">-</span>';
+                                        }
+                                        echo '</td>';
                                         echo '</tr>';
                                     }
                                 } else {
-                                    echo '<tr><td colspan="4" class="text-center text-muted">Belum ada data pendapatan</td></tr>';
+                                    echo '<tr><td colspan="5" class="text-center text-muted">Belum ada data pendapatan</td></tr>';
                                 }
                             } catch(PDOException $e) {
                                 echo '<tr><td colspan="4">Error: ' . $e->getMessage() . '</td></tr>';

@@ -36,7 +36,7 @@ $pdo = Database::getInstance()->getConnection();
     $stmt = $pdo->query("SELECT COUNT(*) FROM pengaturan");
     if ($stmt->fetchColumn() == 0) {
         $defaults = [
-            ['company_name', 'DEMO COMPANY', 'Nama Perusahaan'],
+            ['company_name', 'AtmoBilling', 'Nama Perusahaan'],
             ['company_tagline', 'HIGH SPEED INTERNET CONNECTION', 'Tagline Perusahaan'],
             ['company_logo', '', 'Logo Perusahaan'],
             ['company_favicon', '', 'Favicon Perusahaan'],

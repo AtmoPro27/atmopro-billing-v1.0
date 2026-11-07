@@ -32,12 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['confirm_payment'])) {
         }
 
         // Update invoice menjadi paid
-        $stmt = $pdo->prepare("UPDATE invoice SET status = 'paid', tgl_bayar = NOW() WHERE id = ?");
-        $stmt->execute([$invoice['id']]);
+        $stmt = $pdo->prepare("UPDATE invoice SET status = 'paid', tgl_bayar = NOW(), paid_by = ?, metode_bayar = 'TRANSFER' WHERE id = ?");
+        $stmt->execute([$_SESSION['username'] ?? 'system', $invoice['id']]);
         error_log("Invoice updated to paid");
 
         // Update jatuh tempo pelanggan +1 bulan
-        $stmt = $pdo->prepare("UPDATE pelanggan SET jatuh_tempo = DATE_ADD(DATE(jatuh_tempo), INTERVAL 1 MONTH) + INTERVAL 23 HOUR + INTERVAL 59 MINUTE + INTERVAL 59 SECOND WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE pelanggan SET jatuh_tempo = DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-20'), INTERVAL 1 MONTH) + INTERVAL 23 HOUR + INTERVAL 59 MINUTE + INTERVAL 59 SECOND WHERE id = ?");
         $stmt->execute([$invoice['pelanggan_id']]);
         error_log("Jatuh tempo updated");
 
@@ -57,9 +57,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['confirm_payment'])) {
             $stmt->execute([$customer_id]);
             error_log("Customer status updated: $customer_id -> active");
 
-            // Aktifkan di router
-            shell_exec('/usr/bin/php ' . BASE_PATH . '/cron/enable_active_router.php > /dev/null 2>&1 &');
-            error_log("Router enable triggered for: $customer_id");
+            // Aktifkan PPPoE langsung via API Mikrotik
+            $stmt = $pdo->prepare("
+                SELECT pk.router_id 
+                FROM pelanggan p 
+                LEFT JOIN paket_internet pk ON p.paket_id = pk.id 
+                WHERE p.id = ?
+            ");
+            $stmt->execute([$invoice['pelanggan_id']]);
+            $paket = $stmt->fetch();
+            $router_id = $paket['router_id'] ?? null;
+
+            if ($router_id) {
+                require_once __DIR__ . '/../../includes/mikrotik_api.php';
+                $enable_result = enable_pppoe_user($router_id, $customer_id);
+                error_log("Enable PPPoE: " . json_encode($enable_result));
+            }
         }
 
         // Catat log aktivitas

@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . "/includes/session_check.php";
+require_once __DIR__ . "/includes/auth_check.php";
 
 $user_name = $_SESSION['user_name'];
 $user_role = $_SESSION['user_role'];

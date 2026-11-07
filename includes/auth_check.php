@@ -8,8 +8,11 @@
  *   require_once __DIR__ . '/../includes/auth_check.php'; (dari modules/xxx/)
  */
 
-// Pastikan session sudah jalan
+// Set cookie params (security)
 if (session_status() === PHP_SESSION_NONE) {
+    ini_set("session.cookie_httponly", 1);
+    ini_set("session.cookie_samesite", "Lax");
+    ini_set("session.use_strict_mode", 1);
     session_start();
 }
 

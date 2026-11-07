@@ -16,7 +16,7 @@ const urlsToCache = [
   '/portal/offline.php',
   '/portal/icons/icon-192.png',
   '/portal/icons/icon-512.png',
-  '/manifest.json',
+  '/portal/manifest.php',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
 ];

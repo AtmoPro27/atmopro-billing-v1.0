@@ -21,13 +21,13 @@ try {
         $settings[$row['key_setting']] = $row['value'];
     }
     $company_phone = $settings['company_phone'] ?? '628000000000';
-    $company_name_setting = $settings['company_name'] ?? 'DEMO COMPANY';
+    $company_name_setting = $settings['company_name'] ?? 'AtmoBilling';
     $company_tagline_setting = $settings['company_tagline'] ?? 'HIGH SPEED INTERNET CONNECTION';
     $company_logo = $settings['company_logo'] ?? '';
     $company_favicon = $settings['company_favicon'] ?? '';
 } catch(PDOException $e) {
     $company_phone = '628000000000';
-    $company_name_setting = 'DEMO COMPANY';
+    $company_name_setting = 'AtmoBilling';
     $company_tagline_setting = 'HIGH SPEED INTERNET CONNECTION';
     $company_logo = '';
 }

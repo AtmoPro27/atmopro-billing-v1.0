@@ -49,44 +49,9 @@ try {
     } else {
         writeLog("RUTIN sudah dicatat bulan ini, skip");
     }
+    // Bagi hasil dipindah ke cron terpisah (auto_bagi_hasil.php)
     
-    // ============================================
-    // 2. BAGI HASIL (dari tabel investor)
-    // ============================================
-    
-    $cek_bagi = $pdo->query("
-        SELECT COUNT(*) as total FROM pengeluaran 
-        WHERE jenis = 'bagi_hasil' 
-        AND MONTH(tanggal) = MONTH(CURDATE()) 
-        AND YEAR(tanggal) = YEAR(CURDATE())
-        AND keterangan LIKE '%AUTO BAGI HASIL%'
-    ")->fetch()['total'];
-    
-    if ($cek_bagi == 0) {
-        $investors = $pdo->query("
-            SELECT id, nama, bagi_hasil_per_bulan 
-            FROM investor 
-            WHERE bagi_hasil_per_bulan > 0
-        ")->fetchAll();
-        
-        foreach ($investors as $inv) {
-            $stmt = $pdo->prepare("
-                INSERT INTO pengeluaran (jenis, investor_id, keterangan, jumlah, tanggal) 
-                VALUES (?, ?, ?, ?, NOW())
-            ");
-            $stmt->execute([
-                'bagi_hasil',
-                $inv['id'],
-                '[AUTO BAGI HASIL] ' . $inv['nama'] . ' - Bagi hasil bulanan',
-                $inv['bagi_hasil_per_bulan']
-            ]);
-        }
-        writeLog(count($investors) . " pengeluaran BAGI HASIL otomatis dicatat");
-    } else {
-        writeLog("BAGI HASIL sudah dicatat bulan ini, skip");
-    }
-    
-    echo date('[Y-m-d H:i:s]') . " - Selesai\n";
+echo date('[Y-m-d H:i:s]') . " - Selesai\n";
     
 } catch(PDOException $e) {
     writeLog("ERROR: " . $e->getMessage());

@@ -14,7 +14,7 @@ $settings = [];
 while ($row = $stmt->fetch()) {
     $settings[$row['key_setting']] = $row['value'];
 }
-$company_name = $settings['company_name'] ?? 'DEMO COMPANY';
+$company_name = $settings['company_name'] ?? 'AtmoBilling';
 $company_tagline = $settings['company_tagline'] ?? 'HIGH SPEED INTERNET CONNECTION';
 $company_logo = $settings['company_logo'] ?? '';
 $company_favicon = $settings['company_favicon'] ?? '';
@@ -76,9 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
                     $_SESSION['pelanggan_telp'] = $pelanggan['no_telepon'];
                     $_SESSION['pelanggan_status'] = $pelanggan['status'];
                     
-                    $_SESSION["portal_login_time"] = time();
-                    $_SESSION["portal_last_activity"] = time();
-                    session_regenerate_id(false);
+                    session_regenerate_id(true);
                     
                     header("Location: dashboard.php");
                     exit();

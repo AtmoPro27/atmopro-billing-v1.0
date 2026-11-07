@@ -1,6 +1,6 @@
 <?php
 ob_start();
-require_once __DIR__ . "/../../includes/session_check.php";
+require_once __DIR__ . "/../../includes/auth_check.php";
 if (!isset($_SESSION['user_id'])) {
     header("Location: /index.php");
     exit();

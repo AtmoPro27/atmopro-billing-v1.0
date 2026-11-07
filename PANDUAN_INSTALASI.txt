@@ -1,0 +1,210 @@
+========================================
+PANDUAN INSTALASI
+BILLING SYSTEM ISP — AtmoPro V1.2
+========================================
+Versi: 1.2 (2026-11-05)
+File: billing-system-complete-2026-11-05-v1.2-final.tar.gz
+
+========================================
+FILE YANG DISERTAKAN
+========================================
+1. billing-system-complete-2026-11-05-v1.2-final.tar.gz  -> Source code
+2. database.sql                                            -> Database (struktur + sample)
+3. .env.example                                            -> Template konfigurasi
+4. README.md                                               -> Dokumentasi
+5. CHANGELOG.md                                            -> Riwayat update
+6. PANDUAN_INSTALASI.txt                                   -> File ini
+
+========================================
+REQUIREMENT
+========================================
+- PHP 8.1+ (ekstensi: mysqli, curl, json, mbstring, gd)
+- MariaDB 10.5+ / MySQL 8+
+- Nginx / Apache
+- OS: Ubuntu 22.04 / 24.04 (recommended)
+
+========================================
+LANGKAH INSTALASI
+========================================
+
+1. EXTRACT SOURCE
+   mkdir -p /var/www/domain-anda
+   tar -xzf billing-system-complete-2026-11-05-v1.2-final.tar.gz -C /var/www/domain-anda
+   cd /var/www/domain-anda
+
+2. BUAT DATABASE
+   mysql -u root -p
+   > CREATE DATABASE nama_database CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   > CREATE USER 'user_database'@'localhost' IDENTIFIED BY 'password_kuat';
+   > GRANT ALL PRIVILEGES ON nama_database.* TO 'user_database'@'localhost';
+   > FLUSH PRIVILEGES;
+   > EXIT;
+
+3. IMPORT DATABASE
+   mysql -u user_database -p nama_database < database.sql
+
+4. KONFIGURASI .env
+   cp .env.example .env
+   nano .env
+
+   Isi:
+   DB_HOST=localhost
+   DB_NAME=nama_database
+   DB_USER=user_database
+   DB_PASS=password_kuat
+   BASE_URL=https://domain-anda.com
+   APP_ENV=production
+
+5. SET PERMISSION
+   chown -R www-data:www-data /var/www/domain-anda
+   chmod 640 /var/www/domain-anda/.env
+   chmod -R 755 /var/www/domain-anda/uploads
+   chmod -R 755 /var/www/domain-anda/cache
+   chmod -R 755 /var/www/domain-anda/logs
+
+6. KONFIGURASI NGINX
+   server {
+       listen 80;
+       server_name domain-anda.com;
+       root /var/www/domain-anda;
+       index index.php index.html;
+
+       location / {
+           try_files $uri $uri/ /index.php?$query_string;
+       }
+       location /portal {
+           try_files $uri $uri/ /portal/index.php?$query_string;
+       }
+       location ~ \.php$ {
+           include snippets/fastcgi-php.conf;
+           fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+       }
+   }
+
+7. SETUP CRON (WAJIB)
+   crontab -e
+
+   Tambahkan baris berikut:
+
+   # Cek status PPPoE online (tiap 5 menit)
+   */5 * * * * /usr/bin/php /var/www/domain-anda/cron/check_pppoe_online.php >> /var/log/pppoe.log 2>&1
+
+   # Cek status router (tiap 5 menit)
+   */5 * * * * /usr/bin/php /var/www/domain-anda/cron/check_router_status.php >> /var/log/router.log 2>&1
+
+   # Auto invoice (tiap 30 menit)
+   */30 * * * * /usr/bin/php /var/www/domain-anda/cron/auto_invoice.php >> /var/log/invoice.log 2>&1
+
+   # Cek jatuh tempo (tiap hari jam 00:00)
+   0 0 * * * /usr/bin/php /var/www/domain-anda/cron/cek_jatuh_tempo.php >> /var/log/tempo.log 2>&1
+
+   # Isolir pelanggan expired (tiap hari jam 01:00)
+   0 1 * * * /usr/bin/php /var/www/domain-anda/cron/isolir_expired.php >> /var/log/isolir.log 2>&1
+
+   # Disable pelanggan expired (tiap hari jam 02:00)
+   0 2 * * * /usr/bin/php /var/www/domain-anda/cron/disable_expired.php >> /var/log/disable.log 2>&1
+
+8. LOGIN
+   Buka https://domain-anda.com/
+
+   Admin:
+   - Username: admin
+   - Password: admin123
+
+   !!! WAJIB GANTI PASSWORD SETELAH LOGIN PERTAMA !!!
+
+========================================
+KONFIGURASI TAMBAHAN
+========================================
+
+MIKROTIK:
+- Menu Router -> Tambah Router
+- Isi IP, username, password
+- Klik Test Connection
+
+GENIEACS (opsional — BYO-ACS):
+- Install GenieACS di server terpisah/lokal
+- Settings -> GenieACS
+- URL: http://IP-GenieACS:7557
+- Username/password: kosongkan kalau tidak pakai auth
+
+WHATSAPP:
+- Settings -> WA Gateway
+- Isi URL gateway, API key, nomor pengirim
+
+TELEGRAM:
+- Buat bot via @BotFather
+- Settings -> Telegram
+- Isi token bot
+
+========================================
+PAYMENT GATEWAY:
+- Buka Settings -> Payment Gateway
+- Provider yang SUDAH SIAP PAKAI: Duitku
+- Provider di dropdown (siap dikembangkan): Midtrans, Xendit, Tripay, Paytren
+- Cara aktifkan Duitku:
+  1. Daftar di https://duitku.com
+  2. Ambil Merchant Code & API Key dari dashboard
+  3. Isi di Settings -> Payment Gateway
+  4. Mode: sandbox (testing) / production (live)
+  5. Set callback URL di dashboard Duitku ke: https://domain-anda.com/api/duitku_callback.php
+  6. Klik Test Connection
+
+CATATAN:
+Integrasi fully-tested saat ini adalah Duitku.
+Provider lain tersedia di dropdown untuk pengembangan lebih lanjut.
+
+TROUBLESHOOTING
+========================================
+- Error "Failed to open stream": cek permission folder (langkah 5)
+- Error koneksi DB: cek DB_HOST, DB_USER, DB_PASS di .env
+- Cron tidak jalan: cek log di /var/log/*.log
+- GenieACS tidak connect: pastikan port 7557 terbuka & URL benar
+
+========================================
+SUPPORT
+========================================
+WA: 082298411981
+Telegram: @mbahatmo
+Email: atmopro3@gmail.com
+
+========================================
+
+========================================
+CATATAN KEAMANAN (V1.2)
+========================================
+1. Session Timeout:
+   - Auto logout setelah 30 menit idle
+   - Auto logout setelah 8 jam (absolute)
+   - Berlaku untuk admin & portal pelanggan
+
+2. Konfigurasi timeout bisa diubah di:
+   - includes/session_check.php (admin)
+   - includes/session_check_portal.php (portal)
+
+   Ubah nilai:
+   - SESSION_IDLE_TIMEOUT (default 1800 = 30 menit)
+   - SESSION_ABSOLUTE_TIMEOUT (default 28800 = 8 jam)
+
+3. Session regenerate ID untuk keamanan
+4. Cache jadwal sholat per project (tidak konflik)
+5. Dashboard portal cepat (< 1 detik)
+
+========================================
+
+========================================
+CHANGELOG V1.2 (2026-11-05)
+========================================
+✅ Sistem auth terpadu (auth_check.php)
+✅ Session timeout (30 menit idle, 8 jam absolute)
+✅ PWA manifest dinamis (dari DB)
+✅ Favicon dinamis (dari DB)
+✅ Upload validator (5 layer validasi)
+✅ Export PDF (invoice, laba rugi, investor)
+✅ GenieACS search AJAX
+✅ Cache PPPoE per-project
+✅ Dashboard cepat (< 1 detik)
+✅ Fix hardcode "Klasnet" di 8+ file
+✅ Fix hardcode "Demo Company" di 16+ file
+
+========================================

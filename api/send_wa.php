@@ -49,7 +49,7 @@ try {
             $wa_number = $stmt->fetchColumn();
             
             $data = [
-                "company_name" => $company_name ?: "DEMO COMPANY",
+                "company_name" => $company_name ?: "AtmoBilling",
                 "customer_name" => $invoice["nama_lengkap"],
                 "customer_id" => $invoice["customer_id"],
                 "invoice_no" => $invoice["no_invoice"],

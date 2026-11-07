@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . "/../includes/session_check_portal.php";
+require_once __DIR__ . "/../includes/auth_check_portal.php";
 if (!isset($_SESSION['portal_login'])) {
     header("Location: index.php");
     exit();

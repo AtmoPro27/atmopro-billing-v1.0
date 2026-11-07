@@ -34,7 +34,8 @@ function getGenieACSDevices($limit = 100) {
         $base_url = 'http://' . $base_url;
     }
     $timeout = (int)(getGenieACSSetting('genieacs_timeout') ?: 30);
-    $url = rtrim($base_url, '/') . "/devices?limit={$limit}";
+    $projection = urlencode("_id,_lastInform,VirtualParameters,InternetGatewayDevice.DeviceInfo.SerialNumber,InternetGatewayDevice.DeviceInfo.ProductClass,InternetGatewayDevice.DeviceInfo.Manufacturer,InternetGatewayDevice.DeviceInfo.Temperature,InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPAddress,InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.PPPoE.Username,InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.Username,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.RxRate,InternetGatewayDevice.LANDevice.1.Hosts");
+    $url = rtrim($base_url, "/") . "/devices?limit={$limit}&projection={$projection}";
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -340,7 +341,7 @@ function updateGenieACSParameter($deviceId, $parameter, $value) {
     curl_close($ch);
     
     return [
-        'success' => $httpCode == 200 || $httpCode == 201 || $httpCode == 204,
+        'success' => $httpCode == 200 || $httpCode == 201 || $httpCode == 202 || $httpCode == 204,
         'code' => $httpCode,
         'response' => $response
     ];

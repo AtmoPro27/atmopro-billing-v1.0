@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . "/../includes/session_check_portal.php";
-$company_name = 'DEMO COMPANY';
+require_once __DIR__ . "/../includes/auth_check_portal.php";
+$company_name = 'AtmoBilling';
 try {
     require_once __DIR__ . '/../config/database.php';
     $pdo = Database::getInstance()->getConnection();
@@ -21,7 +21,7 @@ try {
     <title>Offline - <?= htmlspecialchars($company_name) ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="manifest" href="/portal/manifest.json">
+    <link rel="manifest" href="/portal/manifest.php">
     <link rel="icon" type="image/png" sizes="192x192" href="/portal/icons/icon-192.png">
     <style>
         body {

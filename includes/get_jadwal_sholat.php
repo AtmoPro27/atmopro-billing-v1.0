@@ -9,7 +9,7 @@ function getJadwalSholatSragen() {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 2);
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
@@ -44,7 +44,7 @@ function getJadwalSholatSragen() {
 
 // Cache 1 jam
 $cache_file = __DIR__ . '/../cache/jadwal_sholat_cache.json';
-$cache_time = 3600;
+$cache_time = 86400;
 
 if (file_exists($cache_file) && (time() - filemtime($cache_file)) < $cache_time) {
     $sholat_today = json_decode(file_get_contents($cache_file), true);

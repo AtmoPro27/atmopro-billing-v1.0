@@ -11,6 +11,10 @@ $dari = $_GET['dari'] ?? date('Y-01-01');
 $sampai = $_GET['sampai'] ?? date('Y-12-31');
 $tahun = date('Y', strtotime($dari));
 
+// Ambil saldo awal tahun
+$stmt_saldo = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'saldo_awal_tahun'");
+$saldo_awal = (int)($stmt_saldo->fetchColumn() ?: 0);
+
 $filename = "laba_rugi_" . $dari . "_sd_" . $sampai . ".csv";
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -33,7 +37,8 @@ fputcsv($output, [
     'Pendapatan Manual',
     'Total Pendapatan',
     'Total Pengeluaran',
-    'Laba / Rugi'
+    'Laba / Rugi',
+    'Saldo Kumulatif'
 ]);
 
 $nama_bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -41,6 +46,19 @@ $nama_bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus
 $grand_inv = 0;
 $grand_man = 0;
 $grand_peng = 0;
+
+// Baris Saldo Tahun Lalu
+fputcsv($output, [
+    'Saldo Tahun Lalu',
+    '-',
+    '-',
+    '-',
+    '-',
+    '-',
+    $saldo_awal
+]);
+
+$saldo_kumulatif = $saldo_awal;
 
 for ($m = 1; $m <= 12; $m++) {
     // Invoice per bulan
@@ -61,13 +79,16 @@ for ($m = 1; $m <= 12; $m++) {
     $total_income = $inv + $man;
     $laba_rugi = $total_income - $peng;
 
+    $saldo_kumulatif += $laba_rugi;
+
     fputcsv($output, [
         $nama_bulan[$m-1],
         $inv,
         $man,
         $total_income,
         $peng,
-        $laba_rugi
+        $laba_rugi,
+        $saldo_kumulatif
     ]);
 
     $grand_inv += $inv;
@@ -86,7 +107,8 @@ fputcsv($output, [
     $grand_man,
     $grand_income,
     $grand_peng,
-    $grand_laba
+    $grand_laba,
+    $saldo_kumulatif
 ]);
 
 // =============================================================

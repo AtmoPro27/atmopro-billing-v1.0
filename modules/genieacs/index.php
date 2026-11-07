@@ -79,8 +79,8 @@ unset($device);
 // SORTING & SEARCH (SERVER-SIDE)
 // ============================================
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$sort = isset($_GET['sort']) ? $_GET['sort'] : 'last_comm';
-$order = isset($_GET['order']) && strtolower($_GET['order']) == 'asc' ? 'asc' : 'desc';
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'id';
+$order = isset($_GET['order']) && strtolower($_GET['order']) == 'desc' ? 'desc' : 'asc';
 
 // Filter pencarian
 if ($search !== '') {
@@ -99,6 +99,22 @@ if ($search !== '') {
 
 // Sorting
 usort($all_devices, function($a, $b) use ($sort, $order) {
+    // Custom sort untuk 'id' (PPPoE Username) — numerik dulu, huruf belakangan
+    if ($sort === 'id') {
+        $aId = $a['id'] ?? '';
+        $bId = $b['id'] ?? '';
+        $aNum = is_numeric($aId) ? (int)$aId : PHP_INT_MAX;
+        $bNum = is_numeric($bId) ? (int)$bId : PHP_INT_MAX;
+        if ($aNum != $bNum) {
+            return $order === 'asc' ? ($aNum < $bNum ? -1 : 1) : ($aNum > $bNum ? -1 : 1);
+        }
+        // Fallback string compare untuk yang bukan angka
+        $aVal = strtolower($aId);
+        $bVal = strtolower($bId);
+        if ($aVal == $bVal) return 0;
+        return $order === 'asc' ? ($aVal < $bVal ? -1 : 1) : ($aVal > $bVal ? -1 : 1);
+    }
+    
     if ($sort === 'status') {
         $aVal = ($a['status'] ?? '') === 'Online' ? 1 : 0;
         $bVal = ($b['status'] ?? '') === 'Online' ? 1 : 0;
@@ -143,6 +159,126 @@ $devices = $all_devices;  // Render SEMUA data
     .pagination-nav a:hover { background: #0d5c1e; color: white; }
     .pagination-nav .active { background: #0d5c1e; color: white; border-color: #0d5c1e; }
     .pagination-nav .disabled { color: #999; background: #f5f5f5; }
+    /* Fix cursor DataTables pagination */
+    .dataTables_wrapper .paginate_button {
+        cursor: pointer !important;
+    }
+    .dataTables_wrapper .paginate_button.disabled {
+        cursor: not-allowed !important;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        cursor: default !important;
+    }
+    .dataTables_wrapper .dataTables_length select,
+    .dataTables_wrapper .dataTables_filter input {
+        cursor: pointer;
+    }
+
+/* ============================================ */
+/* Pagination DataTables — RAPI & MODERN        */
+/* ============================================ */
+.dataTables_wrapper .dataTables_paginate {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    margin-top: 15px;
+    padding: 10px 0;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    margin: 0 2px;
+    border: 1px solid #ddd !important;
+    border-radius: 6px !important;
+    background: white !important;
+    color: #0d5c1e !important;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none !important;
+    transition: all 0.2s ease;
+    cursor: pointer !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #0d5c1e !important;
+    color: white !important;
+    border-color: #0d5c1e !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(13,92,30,0.2);
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    background: #0d5c1e !important;
+    color: white !important;
+    border-color: #0d5c1e !important;
+    cursor: default !important;
+    box-shadow: 0 2px 4px rgba(13,92,30,0.3);
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled,
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+    background: #f5f5f5 !important;
+    color: #999 !important;
+    border-color: #e5e5e5 !important;
+    cursor: not-allowed !important;
+    transform: none;
+    box-shadow: none;
+}
+
+.dataTables_wrapper .dataTables_info {
+    font-size: 13px;
+    color: #666;
+    padding-top: 10px;
+}
+
+.dataTables_wrapper .dataTables_length {
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.dataTables_wrapper .dataTables_length select {
+    padding: 5px 25px 5px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    background: white;
+}
+
+.dataTables_wrapper .dataTables_filter input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.dataTables_wrapper .dataTables_filter input:focus {
+    border-color: #0d5c1e;
+    box-shadow: 0 0 0 3px rgba(13,92,30,0.1);
+}
+
+@media (max-width: 768px) {
+    .dataTables_wrapper .dataTables_paginate {
+        flex-wrap: wrap;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        min-width: 32px;
+        height: 32px;
+        font-size: 12px;
+        padding: 0 8px;
+    }
+}
+
 </style>
 
 <!-- DataTables -->
@@ -188,6 +324,9 @@ jQuery(document).ready(function() {
     
     dataTable = jQuery('#deviceTable').DataTable({
         "pageLength": 25,
+        "ordering": true,
+        "stateSave": false,
+        "order": [[1, 'asc']],
         "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
         "language": {
             "search": "Cari:",
@@ -288,19 +427,6 @@ function testKoneksi() {
     </div>
 </div>
 
-<?php if ($total_devices_count == 0): ?>
-<!-- PESAN GENIEACS KOSONG -->
-<div class="alert alert-warning">
-    <i class="fas fa-exclamation-triangle"></i> 
-    <strong>GenieACS tidak terkoneksi</strong> — tidak ada device yang ditemukan.
-    <br>
-    <small class="text-muted">
-        Ini adalah <strong>mode demo</strong> — data real tidak ditampilkan.
-        <br>
-        Setting: <?= htmlspecialchars($genieacs_config['genieacs_url'] ?? '-') ?>
-    </small>
-</div>
-<?php else: ?>
 <!-- STATISTIK GENIEACS -->
 <div class="row mb-3">
     <div class="col-md-2 col-6 mb-2">
@@ -358,7 +484,6 @@ function testKoneksi() {
         </div>
     </div>
 </div>
-<?php endif; ?>
 
 <div class="card">
     <div class="card-header">

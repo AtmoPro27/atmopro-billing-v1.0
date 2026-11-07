@@ -54,7 +54,7 @@ foreach ($customers as $customer) {
         
         if ($last_paid) {
             // Jatuh tempo = 1 bulan setelah invoice terakhir lunas
-            $new_due = date('Y-m-d H:i:s', strtotime($last_paid['tgl_jatuh_tempo'] . ' +1 month'));
+            $new_due = date('Y-m-d 23:59:59', strtotime($last_paid['tgl_jatuh_tempo'] . ' +1 month'));
             $stmt3 = $pdo->prepare("UPDATE pelanggan SET jatuh_tempo = ? WHERE id = ?");
             $stmt3->execute([$new_due, $customer['id']]);
             $updated++;

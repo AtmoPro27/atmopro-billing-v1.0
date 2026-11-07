@@ -23,7 +23,7 @@ $pdo = Database::getInstance()->getConnection();
     $income_month = $stmt->fetch()['total'];
     
     // PPPoE online dari cache
-    $pppoe_online = (int) @file_get_contents('/tmp/pppoe_online_count_demo.txt');
+    $pppoe_online = (int) @file_get_contents('/tmp/demo_pppoe_online_count.txt');
     
     // Pelanggan baru bulan ini (berdasarkan created_at)
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM pelanggan WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())");
@@ -169,9 +169,9 @@ include 'includes/header.php';
                 <div class="card-body style="padding: 15px !important;">
                     <i class="fas fa-wifi fa-2x mb-1"></i>
                     <h4 class="mb-0">
-                        <?= number_format((int) @file_get_contents('/tmp/pppoe_reguler_demo.txt')) ?>
+                        <?= number_format((int) @file_get_contents('/tmp/demo_pppoe_reguler.txt')) ?>
                         <small class="text-white-50">/</small>
-                        <?= number_format((int) @file_get_contents('/tmp/pppoe_khusus_demo.txt')) ?>
+                        <?= number_format((int) @file_get_contents('/tmp/demo_pppoe_khusus.txt')) ?>
                     </h4>
                     <small>PPPoE Online (Reg/Khusus)</small>
                 </div>
@@ -393,11 +393,6 @@ setInterval(updateTicketNotif, 60000);
 updateTicketNotif();
 </script>
 
-<!-- SERVER MONITOR WIDGET -->
 <?php include __DIR__ . '/includes/server_widget.php'; ?>
-
-<!-- SERVER MONITOR WIDGET -->
-
-<!-- SERVER MONITOR WIDGET -->
 
 <?php include 'includes/footer.php'; ?>

@@ -1,10 +1,6 @@
 <?php
 ob_start();
-require_once __DIR__ . "/../../includes/session_check.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
-    exit();
-}
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 include '../../includes/header.php';
 
@@ -40,6 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $no_telepon = $_POST['no_telepon'];
     $paket_id = $_POST['paket_id'] ?: null;
     $jatuh_tempo = $_POST['jatuh_tempo'] ?: null;
+    if ($jatuh_tempo && strlen($jatuh_tempo) <= 10) {
+        $jatuh_tempo .= ' 23:59:59';
+    } else if ($jatuh_tempo) {
+        // Kalau datetime-local, paksa detik jadi 23:59:59
+        $jatuh_tempo = date('Y-m-d 23:59:59', strtotime($jatuh_tempo));
+    }
     $status = $_POST['status'];
     
     try {

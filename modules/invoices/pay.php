@@ -14,6 +14,11 @@ $pdo = Database::getInstance()->getConnection();
 
         $tgl_bayar = $_POST['tgl_bayar'];
 
+        $metode_bayar = $_POST['metode_bayar'] ?? 'TUNAI';
+        if (!in_array($metode_bayar, ['TUNAI', 'TRANSFER'], true)) {
+            $metode_bayar = 'TUNAI';
+        }
+
         // Ambil no_invoice sebelum update
         $stmt = $pdo->prepare("SELECT no_invoice, pelanggan_id FROM invoice WHERE id = ?");
         $stmt->execute([$id]);
@@ -21,8 +26,8 @@ $pdo = Database::getInstance()->getConnection();
         $no_invoice = $invoice_data['no_invoice'];
         $pelanggan_id = $invoice_data['pelanggan_id'];
 
-        $stmt = $pdo->prepare("UPDATE invoice SET status = 'paid', tgl_bayar = ? WHERE id = ?");
-        $stmt->execute([$tgl_bayar, $id]);
+        $stmt = $pdo->prepare("UPDATE invoice SET status = 'paid', tgl_bayar = ?, paid_by = ?, metode_bayar = ? WHERE id = ?");
+        $stmt->execute([$tgl_bayar, $_SESSION['username'] ?? 'system', $metode_bayar, $id]);
 
         // Catat log pembayaran
         include '../../includes/activity_log.php';
@@ -33,10 +38,19 @@ $pdo = Database::getInstance()->getConnection();
         $invoice = $stmt->fetch();
 
         if ($invoice) {
+            // Simpan jatuh tempo lama sebelum diperpanjang (untuk restore saat batal)
+            $stmt_old = $pdo->prepare("SELECT jatuh_tempo FROM pelanggan WHERE id = ?");
+            $stmt_old->execute([$invoice['pelanggan_id']]);
+            $old_due = $stmt_old->fetchColumn();
+            if ($old_due) {
+                $stmt_save = $pdo->prepare("UPDATE invoice SET jatuh_tempo_sebelum = ? WHERE id = ?");
+                $stmt_save->execute([$old_due, $id]);
+            }
+
             // Perpanjang jatuh tempo +1 bulan dan aktifkan status
             $stmt = $pdo->prepare("
                 UPDATE pelanggan
-                SET jatuh_tempo = DATE_ADD(DATE(jatuh_tempo), INTERVAL 1 MONTH) + INTERVAL 23 HOUR + INTERVAL 59 MINUTE + INTERVAL 59 SECOND,
+                SET jatuh_tempo = DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-20'), INTERVAL 1 MONTH) + INTERVAL 23 HOUR + INTERVAL 59 MINUTE + INTERVAL 59 SECOND,
                     status = 'active'
                 WHERE id = ?
             ");
@@ -117,7 +131,14 @@ include '../../includes/header.php';
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Tanggal Bayar <span class="text-danger">*</span></label>
-                    <input type="datetime-local" name="tgl_bayar" class="form-control" required  value="<?= htmlspecialchars(date('Y-m-d\TH:i')) ?>">
+                    <input type="datetime-local" name="tgl_bayar" class="form-control" required value="<?= htmlspecialchars(date('Y-m-d\TH:i')) ?>">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Metode Pembayaran <span class="text-danger">*</span></label>
+                    <select name="metode_bayar" class="form-select" required>
+                        <option value="TUNAI" selected>TUNAI / CASH</option>
+                        <option value="TRANSFER">TRANSFER</option>
+                    </select>
                 </div>
             </div>
 

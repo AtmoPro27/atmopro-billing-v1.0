@@ -1,10 +1,6 @@
 <?php
 ob_start();
-require_once __DIR__ . "/../../includes/session_check.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
-    exit();
-}
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 include '../../includes/header.php';
 
@@ -86,7 +82,7 @@ $pdo = Database::getInstance()->getConnection();
                         <td>: 
                             <?php
                             if ($invoice['status'] == 'paid') {
-                                echo '<span class="badge bg-success">Lunas</span>';
+                                echo '<span class="badge bg-success">Lunas' . (!empty($invoice['paid_by']) ? ' / ' . htmlspecialchars($invoice['paid_by']) : '') . '</span>';
                             } elseif ($invoice['status'] == 'pending') {
                                 echo '<span class="badge bg-warning">Pending</span>';
                             } elseif ($invoice['status'] == 'cancelled') {

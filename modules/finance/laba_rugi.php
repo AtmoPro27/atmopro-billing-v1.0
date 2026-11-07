@@ -1,15 +1,37 @@
 <?php
-require_once __DIR__ . "/../../includes/session_check.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
-    exit();
-}
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 include '../../includes/header.php';
 
 try {
     require_once __DIR__ . "/../../config/database.php";
     $pdo = Database::getInstance()->getConnection();
+
+// ============================================================
+// PROSES POST SALDO AWAL TAHUN
+// ============================================================
+$message = '';
+$message_type = '';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['saldo_awal'])) {
+    $saldo_awal_input = str_replace('.', '', $_POST['saldo_awal']);
+    $saldo_awal_input = (int)$saldo_awal_input;
+    
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO settings (setting_key, setting_value) 
+            VALUES ('saldo_awal_tahun', ?) 
+            ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()
+        ");
+        $stmt->execute([$saldo_awal_input, $saldo_awal_input]);
+        
+        $message = '✅ Saldo awal tahun berhasil disimpan!';
+        $message_type = 'success';
+    } catch(PDOException $e) {
+        $message = '❌ Error: ' . $e->getMessage();
+        $message_type = 'danger';
+    }
+}
 } catch(PDOException $e) {
     die("Koneksi database gagal: " . $e->getMessage());
 }
@@ -71,16 +93,127 @@ $expense_year = $stmt->fetch()['total'];
 // =============================================================
 
 $profit_month = $income_month - $expense_month;
+
+// Laba bulan lalu
+$stmt = $pdo->query("
+    SELECT COALESCE(SUM(jumlah), 0) as total FROM invoice
+    WHERE status = 'paid' 
+    AND MONTH(tgl_bayar) = MONTH(CURDATE() - INTERVAL 1 MONTH) 
+    AND YEAR(tgl_bayar) = YEAR(CURDATE() - INTERVAL 1 MONTH)
+");
+$income_invoice_last_month = $stmt->fetch()['total'];
+
+$stmt = $pdo->query("
+    SELECT COALESCE(SUM(jumlah), 0) as total FROM income_manual
+    WHERE MONTH(tanggal) = MONTH(CURDATE() - INTERVAL 1 MONTH) 
+    AND YEAR(tanggal) = YEAR(CURDATE() - INTERVAL 1 MONTH)
+");
+$income_manual_last_month = $stmt->fetch()['total'];
+
+$stmt = $pdo->query("
+    SELECT COALESCE(SUM(jumlah), 0) as total FROM pengeluaran
+    WHERE MONTH(tanggal) = MONTH(CURDATE() - INTERVAL 1 MONTH) 
+    AND YEAR(tanggal) = YEAR(CURDATE() - INTERVAL 1 MONTH)
+");
+$expense_last_month = $stmt->fetch()['total'];
+
+$income_last_month = $income_invoice_last_month + $income_manual_last_month;
+$profit_last_month = $income_last_month - $expense_last_month;
+
+// Hitung persentase
+if ($profit_last_month > 0) {
+    $persen_profit = round((($profit_month - $profit_last_month) / $profit_last_month) * 100, 1);
+} else {
+    $persen_profit = null;
+}
 $profit_year = $income_year - $expense_year;
+
+// ============================================================
+// SALDO PERUSAHAAN (SEMUA WAKTU)
+// ============================================================
+$stmt = $pdo->query("SELECT COALESCE(SUM(jumlah), 0) as total FROM invoice WHERE status = 'paid'");
+$total_income_invoice = $stmt->fetch()['total'];
+
+$stmt = $pdo->query("SELECT COALESCE(SUM(jumlah), 0) as total FROM income_manual");
+$total_income_manual = $stmt->fetch()['total'];
+
+$total_income_all = $total_income_invoice + $total_income_manual;
+
+$stmt = $pdo->query("SELECT COALESCE(SUM(jumlah), 0) as total FROM pengeluaran");
+$total_expense_all = $stmt->fetch()['total'];
+
+$saldo_perusahaan = $total_income_all - $total_expense_all;
+
+// ============================================================
+// SALDO BERJALAN (SALDO AWAL + LABA KUMULATIF)
+// ============================================================
+$stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'saldo_awal_tahun'");
+$saldo_awal = (int)($stmt->fetchColumn() ?: 0);
+
+// Laba kumulatif tahun ini (Jan - bulan ini)
+$stmt = $pdo->query("
+    SELECT COALESCE(SUM(jumlah), 0) as total FROM invoice
+    WHERE status = 'paid'
+    AND YEAR(tgl_bayar) = YEAR(CURDATE())
+    AND MONTH(tgl_bayar) <= MONTH(CURDATE())
+");
+$income_kumulatif = $stmt->fetch()['total'];
+
+$stmt = $pdo->query("
+    SELECT COALESCE(SUM(jumlah), 0) as total FROM income_manual
+    WHERE YEAR(tanggal) = YEAR(CURDATE())
+    AND MONTH(tanggal) <= MONTH(CURDATE())
+");
+$income_manual_kumulatif = $stmt->fetch()['total'];
+
+$stmt = $pdo->query("
+    SELECT COALESCE(SUM(jumlah), 0) as total FROM pengeluaran
+    WHERE YEAR(tanggal) = YEAR(CURDATE())
+    AND MONTH(tanggal) <= MONTH(CURDATE())
+");
+$expense_kumulatif = $stmt->fetch()['total'];
+
+$laba_kumulatif = ($income_kumulatif + $income_manual_kumulatif) - $expense_kumulatif;
+
+$saldo_berjalan = $saldo_awal + $laba_kumulatif;
+
+// ============================================================
+// SALDO PER BULAN (RUNNING BALANCE)
+// ============================================================
+$saldo_per_bulan = [];
+$saldo_kumulatif = $saldo_awal;
+
+for ($i = 0; $i < 12; $i++) {
+    $laba_bulan = $chart_profit[$i];
+    $saldo_kumulatif += $laba_bulan;
+    $saldo_per_bulan[$i] = $saldo_kumulatif;
+}
 
 $status_month = $profit_month >= 0 ? 'Laba' : 'Rugi';
 $status_year = $profit_year >= 0 ? 'Laba' : 'Rugi';
+
+// Label persentase
+if ($persen_profit !== null) {
+    if ($persen_profit > 0) {
+        $label_persen = '<span class="text-success">↑ ' . $persen_profit . '%</span>';
+    } elseif ($persen_profit < 0) {
+        $label_persen = '<span class="text-danger">↓ ' . abs($persen_profit) . '%</span>';
+    } else {
+        $label_persen = '<span class="text-muted">→ 0%</span>';
+    }
+} else {
+    $label_persen = '<span class="text-muted">-</span>';
+}
+
+// DEBUG
+echo '<!-- DEBUG: persen_profit=' . ($persen_profit ?? 'NULL') . ' | profit_month=' . ($profit_month ?? 'NULL') . ' | profit_last_month=' . ($profit_last_month ?? 'NULL') . ' -->';
 
 // =============================================================
 // DATA UNTUK GRAFIK JANUARI - DESEMBER (TAHUN INI)
 // =============================================================
 
 $tahun_ini = date('Y');
+$bulan_ini_num = (int)date('n');
 $chart_labels = [];
 $chart_income = [];
 $chart_expense = [];
@@ -146,6 +279,25 @@ for ($i = 1; $i <= 12; $i++) {
 $total_income = array_sum($chart_income);
 $total_expense = array_sum($chart_expense);
 $total_profit = $total_income - $total_expense;
+
+// ============================================================
+// SALDO PER BULAN (RUNNING BALANCE)
+// ============================================================
+$stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'saldo_awal_tahun'");
+$saldo_awal = (int)($stmt->fetchColumn() ?: 0);
+
+$saldo_per_bulan = [];
+$saldo_kumulatif = $saldo_awal;
+
+for ($i = 0; $i < 12; $i++) {
+    $laba_bulan = $chart_profit[$i] ?? 0;
+    $saldo_kumulatif += $laba_bulan;
+    $saldo_per_bulan[$i] = $saldo_kumulatif;
+}
+
+// Saldo berjalan (sampai bulan ini)
+$bulan_ini = (int)date('n') - 1; // 0-index
+$saldo_berjalan = $saldo_per_bulan[$bulan_ini] ?? $saldo_awal;
 ?>
 
 <style>
@@ -186,6 +338,7 @@ $total_profit = $total_income - $total_expense;
         <div class="stat-box" style="background: linear-gradient(135deg, #0d5c1e, #1a8a2d);">
             <h2 style="color: white;">
                 <?= $status_month ?>: Rp <?= number_format(abs($profit_month), 0, ',', '.') ?>
+                <?= $label_persen ?? '' ?>
             </h2>
             <small>LABA RUGI BULAN INI</small>
             <div class="sub-info">
@@ -201,6 +354,7 @@ $total_profit = $total_income - $total_expense;
         <div class="stat-box" style="background: linear-gradient(135deg, #8e44ad, #9b59b6);">
             <h2 style="color: white;">
                 <?= $status_year ?>: Rp <?= number_format(abs($profit_year), 0, ',', '.') ?>
+                <?= $label_persen ?? '' ?>
             </h2>
             <small>LABA RUGI TAHUN INI</small>
             <div class="sub-info">
@@ -240,10 +394,56 @@ $total_profit = $total_income - $total_expense;
                 <input type="hidden" name="dari" value="<?= $tahun_ini ?>-01-01">
                 <input type="hidden" name="sampai" value="<?= $tahun_ini ?>-12-31">
                 <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i> Export CSV</button>
+                <a href="export_laba_rugi_pdf.php?dari=<?= $tahun_ini ?>-01-01&sampai=<?= $tahun_ini ?>-12-31" 
+                   class="btn btn-danger btn-sm" target="_blank">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </a>
             </form>
+
+                <?php if (in_array($_SESSION['user_role'] ?? '', ['super_admin','kasir'], true)): ?>
+                <form method="GET" action="export_investor_pdf.php" target="_blank"
+                      style="display:inline-flex; gap:4px; margin-left:5px; vertical-align:middle;">
+                    <select name="bulan" class="form-select form-select-sm" style="width:auto;">
+                        <?php
+                        $nama_bulan_opt = ['Januari','Februari','Maret','April','Mei','Juni',
+                                           'Juli','Agustus','September','Oktober','November','Desember'];
+                        for ($i = 1; $i <= 12; $i++):
+                        ?>
+                            <option value="<?= $i ?>" <?= $i == (int)date('n') ? 'selected' : '' ?>>
+                                <?= $nama_bulan_opt[$i-1] ?>
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+                    <input type="number" name="tahun" class="form-control form-control-sm"
+                           value="<?= date('Y') ?>" min="2000" max="2100" style="width:90px;">
+                    <button type="submit" class="btn btn-warning btn-sm">
+                        <i class="fas fa-file-invoice-dollar"></i> Eksport Laporan Bulanan
+                    </button>
+                </form>
+                <?php endif; ?>
         </div>
     </div>
     <div class="card-body">
+        <!-- Form Input Saldo Awal -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <form method="POST" class="d-flex gap-2 align-items-end">
+                    <div class="flex-grow-1">
+                        <label class="form-label mb-1"><strong>Saldo Awal Tahun</strong></label>
+                        <div class="input-group">
+                            <span class="input-group-text">Rp</span>
+                            <input type="text" name="saldo_awal" class="form-control"
+                                   value="<?= number_format($saldo_awal, 0, ',', '.') ?>"
+                                   placeholder="0">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Simpan
+                    </button>
+                </form>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-bordered table-striped">
                 <thead>
@@ -253,10 +453,24 @@ $total_profit = $total_income - $total_expense;
                         <th>Pengeluaran</th>
                         <th>Laba / Rugi</th>
                         <th>Status</th>
+                        <th>Saldo Kumulatif</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php for ($i = 0; $i < 12; $i++): ?>
+                    <?php 
+                    $prev_profit = null;
+                    ?>
+                    <!-- BARIS: SALDO TAHUN LALU -->
+                    <tr class="table-info">
+                        <td><strong>Saldo Tahun Lalu</strong></td>
+                        <td class="text-center">-</td>
+                        <td class="text-center">-</td>
+                        <td class="text-center">-</td>
+                        <td class="text-center">-</td>
+                        <td class="text-end fw-bold">Rp <?= number_format($saldo_awal, 0, ',', '.') ?></td>
+                    </tr>
+                    <?php
+                    for ($i = 0; $i < 12; $i++): ?>
                         <?php 
                         $income = $chart_income[$i];
                         $expense = $chart_expense[$i];
@@ -264,15 +478,41 @@ $total_profit = $total_income - $total_expense;
                         $status_class = $profit >= 0 ? 'text-success' : 'text-danger';
                         $status_label = $profit >= 0 ? 'Laba' : 'Rugi';
                         $badge_class = $profit >= 0 ? 'badge-laba' : 'badge-rugi';
+                        
+                        // Hitung persentase
+                        $persen = null;
+                        if ($prev_profit !== null && $prev_profit > 0) {
+                            $persen = round((($profit - $prev_profit) / $prev_profit) * 100, 1);
+                        }
+                        
+                        $label_persen = '';
+                        if ($persen !== null) {
+                            if ($persen > 0) {
+                                $label_persen = ' <span class="text-success small">↑ ' . $persen . '%</span>';
+                            } elseif ($persen < 0) {
+                                $label_persen = ' <span class="text-danger small">↓ ' . abs($persen) . '%</span>';
+                            } else {
+                                $label_persen = ' <span class="text-muted small">→ 0%</span>';
+                            }
+                        }
                         ?>
                         <tr>
                             <td><strong><?= $chart_labels[$i] ?></strong></td>
                             <td>Rp <?= number_format($income, 0, ',', '.') ?></td>
                             <td>Rp <?= number_format($expense, 0, ',', '.') ?></td>
                             <td class="<?= $status_class ?> fw-bold">Rp <?= number_format(abs($profit), 0, ',', '.') ?></td>
-                            <td><span class="badge <?= $badge_class ?>"><?= $status_label ?></span></td>
+                            <td>
+                                <span class="badge <?= $badge_class ?>"><?= $status_label ?></span>
+                                <?= $label_persen ?>
+                            </td>
+                            <td class="text-end fw-bold <?= $saldo_per_bulan[$i] >= 0 ? 'text-success' : 'text-danger' ?>">
+                                Rp <?= number_format(abs($saldo_per_bulan[$i]), 0, ',', '.') ?>
+                                <?= $saldo_per_bulan[$i] < 0 ? '(Minus)' : '' ?>
+                            </td>
                         </tr>
-                    <?php endfor; ?>
+                    <?php 
+                        $prev_profit = $profit;
+                    endfor; ?>
                 </tbody>
                 <tfoot>
                     <tr class="table-dark fw-bold">
@@ -281,6 +521,9 @@ $total_profit = $total_income - $total_expense;
                         <td>Rp <?= number_format($total_expense, 0, ',', '.') ?></td>
                         <td class="<?= $total_profit >= 0 ? 'text-success' : 'text-danger' ?>">Rp <?= number_format(abs($total_profit), 0, ',', '.') ?></td>
                         <td><span class="badge <?= $total_profit >= 0 ? 'badge-laba' : 'badge-rugi' ?>"><?= $total_profit >= 0 ? 'Laba' : 'Rugi' ?></span></td>
+                        <td class="text-end fw-bold <?= $saldo_berjalan >= 0 ? 'text-success' : 'text-danger' ?>">
+                            Rp <?= number_format(abs($saldo_berjalan), 0, ',', '.') ?>
+                        </td>
                     </tr>
                 </tfoot>
             </table>
@@ -345,4 +588,5 @@ new Chart(document.getElementById('profitChart'), {
 });
 </script>
 
+<!-- ============================================================= -->
 <?php include '../../includes/footer.php'; ?>

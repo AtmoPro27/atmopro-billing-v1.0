@@ -6,7 +6,7 @@ function analisisRX($rx) {
         return ['analisis' => 'RX tidak tersedia', 'kemungkinan' => 'ONT belum pernah kirim data TR-069', 'aksi' => 'Cek provisioning / TR-069 ONT'];
     }
     $rx = (float) $rx;
-    if ($rx >= -24) return ['analisis' => 'RX normal sebelum putus', 'kemungkinan' => 'Kabel putus / listrik mati / ONT rusak', 'aksi' => 'Cek listrik, lalu fisik kabel drop'];
+    if ($rx >= -25) return ['analisis' => 'RX normal sebelum putus', 'kemungkinan' => 'Kabel putus / listrik mati / ONT rusak', 'aksi' => 'Cek listrik, lalu fisik kabel drop'];
     if ($rx >= -27) return ['analisis' => 'RX lemah sebelum putus', 'kemungkinan' => 'Konektor longgar / redaman naik', 'aksi' => 'Cek konektor & drop cable'];
     return ['analisis' => 'RX kritis sebelum putus', 'kemungkinan' => 'Binding / redaman tinggi / ODP bermasalah', 'aksi' => 'Cek ODP & splitter, prioritas tinggi'];
 }
@@ -14,9 +14,9 @@ function analisisRX($rx) {
 function kategoriRX($rx) {
     if ($rx === null || $rx === '-' || $rx === '' || $rx == 0) return 'Tidak ada data';
     $rx = (float) $rx;
-    if ($rx >= -24) return 'Bagus';
-    if ($rx >= -27) return 'Sedang';
-    return 'Kritis';
+    if ($rx >= -25) return 'Normal';
+    if ($rx >= -27) return 'RX Lemah';
+    return 'RX Kritis';
 }
 
 function formatDurasi($menit) {
@@ -66,11 +66,17 @@ function formatAlarmDown($p, $dev, $selisihMenit, $waktuDown = null) {
     return $pesan;
 }
 
-function formatAlarmRX($p, $dev, $jenisRX) {
+function formatAlarmRX($p, $dev, $jenisRX, $isKritis = false) {
     $rx = $dev['rx'] ?? '-';
     $kategori = kategoriRX($rx);
     
-    $pesan  = "⚠️ *RX LEMAH*\n";
+    if ($isKritis) {
+        $judul = "🔴 *RX KRITIS*";
+    } else {
+        $judul = "⚠️ *RX LEMAH*";
+    }
+
+    $pesan  = "{$judul}\n";
     $pesan .= "──────────────────\n";
     $pesan .= "🆔 *ID*    : `{$p['id_pelanggan']}`\n";
     $pesan .= "👤 *Nama*  : {$p['nama_lengkap']}\n";
@@ -82,14 +88,11 @@ function formatAlarmRX($p, $dev, $jenisRX) {
     $pesan .= "🔌 *PPPoE* : Online (masih jalan)\n";
     $pesan .= "📡 *ONT*   : {$dev['status']}\n";
     $pesan .= "──────────────────\n";
-    $pesan .= "🔍 *Analisis*: RX lemah / loss\n";
-    $pesan .= "💡 *Kemungkinan*: Konektor longgar / kabel drop tertekuk / ODP bermasalah\n";
-    $pesan .= "✅ *Aksi*: Cek konektor & drop cable\n";
-    
+    if ($isKritis) {        $pesan .= "🔍 *Analisis*: RX KRITIS — redaman tinggi / ODP bermasalah\n";        $pesan .= "💡 *Kemungkinan*: Kabel drop rusak / splitter ODP rusak / binding\n";        $pesan .= "✅ *Aksi*: PRIORITAS TINGGI — cek ODP & splitter dulu\n";        $pesan .= "🔴 *Status*: PERLU TINDAKAN SEGERA\n";    } else {        $pesan .= "🔍 *Analisis*: RX lemah / loss\n";        $pesan .= "💡 *Kemungkinan*: Konektor longgar / kabel drop tertekuk\n";        $pesan .= "✅ *Aksi*: Cek konektor & drop cable\n";    }    
     return $pesan;
 }
 
-function formatRecovery($p, $durasi, $sudahDiAck = false) {
+function formatRecovery($p, $durasi, $sudahDiAck = false, $dev = null) {
     if ($sudahDiAck) {
         $judul = "✅ *GANGGUAN SELESAI*";
         $footer = "Pelanggan sudah terhubung kembali.\nGangguan sudah ditandai selesai oleh teknisi.";
@@ -114,6 +117,24 @@ function formatRecovery($p, $durasi, $sudahDiAck = false) {
     $pesan .= "──────────────────\n";
     $pesan .= "🔌 *PPPoE* : *ONLINE* kembali\n";
     $pesan .= "⏱️ *Durasi gangguan*: {$durasiTeks}\n";
+
+    // RX power sekarang
+    $rx = $dev["rx"] ?? null;
+    if ($rx === null || $rx === "-" || $rx === "" || $rx == 0) {
+        $rxTampil = "Tidak ada data";
+        $rxWarning = "";
+    } else {
+        $rx = (float) $rx;
+        $kategori = kategoriRX($rx);
+        $rxTampil = "{$rx} dBm ({$kategori})";
+        $rxWarning = "";
+        if ($rx <= -28) {
+            $rxWarning = " 🔴 *RX KRITIS!*";
+        } elseif ($rx >= -27 && $rx <= -26) {
+            $rxWarning = " ⚠️ RX Lemah";
+        }
+    }
+    $pesan .= "📶 *RX sekarang*: {$rxTampil}{$rxWarning}\n";
     $pesan .= "──────────────────\n";
     $pesan .= "{$footer}\n";
     
@@ -227,8 +248,8 @@ function sendTelegramWithButton($pdo, $chatId, $message, $alarmType, $pelangganI
                 ->execute([$chatId, $alarmId]);
         } else {
             $ins = $pdo->prepare("
-                INSERT INTO alarm_aktif (pelanggan_id, id_pelanggan, tipe_alarm, chat_id, status, rx_normal_count)
-                VALUES (?, ?, ?, ?, 'aktif', 0)
+                INSERT INTO alarm_aktif (pelanggan_id, id_pelanggan, tipe_alarm, chat_id, status, rx_normal_count, notif_sent)
+                VALUES (?, ?, ?, ?, 'aktif', 0, 1)
             ");
             $ins->execute([$pelangganId, $idPelanggan, $tipeAlarm, $chatId]);
             $alarmId = $pdo->lastInsertId();

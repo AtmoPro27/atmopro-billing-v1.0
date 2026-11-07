@@ -24,14 +24,22 @@ $pdo = Database::getInstance()->getConnection();
         $alasan = $_POST['alasan'] ?? '';
         $username = $_SESSION['user_name'];
         
-        // Ambil no_invoice sebelum update
-        $stmt = $pdo->prepare("SELECT no_invoice FROM invoice WHERE id = ?");
+        // Ambil data invoice sebelum update
+        $stmt = $pdo->prepare("SELECT no_invoice, pelanggan_id, jatuh_tempo_sebelum FROM invoice WHERE id = ?");
         $stmt->execute([$id]);
         $invoice_data = $stmt->fetch();
         $no_invoice = $invoice_data['no_invoice'];
-        
-        // Update status invoice ke pending
-        $stmt = $pdo->prepare("UPDATE invoice SET status = 'pending', tgl_bayar = NULL WHERE id = ?");
+        $pelanggan_id = $invoice_data['pelanggan_id'];
+        $jatuh_tempo_sebelum = $invoice_data['jatuh_tempo_sebelum'];
+
+        // Kembalikan jatuh tempo pelanggan jika ada data sebelumnya
+        if (!empty($jatuh_tempo_sebelum) && !empty($pelanggan_id)) {
+            $stmt_restore = $pdo->prepare("UPDATE pelanggan SET jatuh_tempo = ? WHERE id = ?");
+            $stmt_restore->execute([$jatuh_tempo_sebelum, $pelanggan_id]);
+        }
+
+        // Update status invoice ke pending + reset jatuh_tempo_sebelum
+        $stmt = $pdo->prepare("UPDATE invoice SET status = 'pending', tgl_bayar = NULL, paid_by = NULL, metode_bayar = NULL, jatuh_tempo_sebelum = NULL WHERE id = ?");
         $stmt->execute([$id]);
         
         // Catat log pembatalan

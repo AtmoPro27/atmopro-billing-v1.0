@@ -4,19 +4,16 @@
     <meta charset="UTF-8">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Portal Pelanggan - <?= $company_name ?? 'DEMO COMPANY' ?></title>
+    <title>Portal Pelanggan - <?= $company_name ?? 'AtmoBilling' ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/portal/manifest.json">
+    <link rel="manifest" href="/portal/manifest.php">
     <meta name="theme-color" content="#0d5c1e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="DEMO COMPANY">
-    <link rel="apple-touch-icon" href="/portal/icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="/portal/icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/portal/icons/icon-512.png">
+    <meta name="apple-mobile-web-app-title" content="<?= $company_name ?? "AtmoBilling" ?>">
     <?php if (!empty($company_favicon)): ?><link rel="icon" type="image/x-icon" href="/<?= htmlspecialchars($company_favicon) ?>"><?php endif; ?>
     
     <!-- PWA - Service Worker Registration -->
@@ -131,7 +128,7 @@ try {
 } catch(PDOException $e) {
     $settings = [];
 }
-$company_name = $settings['company_name'] ?? 'DEMO COMPANY';
+$company_name = $settings['company_name'] ?? 'AtmoBilling';
 $company_tagline = $settings['company_tagline'] ?? 'HIGH SPEED INTERNET CONNECTION';
 $company_favicon = $settings['company_favicon'] ?? '';
 

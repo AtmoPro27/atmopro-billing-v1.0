@@ -15,7 +15,7 @@ $pdo = Database::getInstance()->getConnection();
     }
 }
 
-$company_name = isset($settings['company_name']) && is_string($settings['company_name']) ? $settings['company_name'] : 'DEMO COMPANY';
+$company_name = isset($settings['company_name']) && is_string($settings['company_name']) ? $settings['company_name'] : 'AtmoBilling';
 $company_tagline = isset($settings['company_tagline']) && is_string($settings['company_tagline']) ? $settings['company_tagline'] : 'HIGH SPEED INTERNET CONNECTION';
 $user_role = $_SESSION['user_role'] ?? 'guest';
 $user_name = $_SESSION['user_name'] ?? 'User';

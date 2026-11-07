@@ -63,8 +63,8 @@ function getServerStats() {
         $disk_used = 0;
         $disk_percent = 0;
         
-        $disk_total_bytes = @disk_total_space('/var/www/klasnet.autobill.my.id');
-        $disk_free_bytes = @disk_free_space('/var/www/klasnet.autobill.my.id');
+        $disk_total_bytes = @disk_total_space('/var/www/demo.atmopro.my.id');
+        $disk_free_bytes = @disk_free_space('/var/www/demo.atmopro.my.id');
         
         if ($disk_total_bytes && $disk_free_bytes) {
             $disk_total = round($disk_total_bytes / 1024 / 1024 / 1024, 2);
@@ -77,11 +77,15 @@ function getServerStats() {
 
         // Uptime
         $uptime_days = 0;
+        $uptime_hours = 0;
+        $uptime_mins = 0;
         if (@is_readable('/proc/uptime')) {
             $uptime_raw = @file_get_contents('/proc/uptime');
             if ($uptime_raw) {
                 $uptime_sec = (int)explode(' ', $uptime_raw)[0];
                 $uptime_days = floor($uptime_sec / 86400);
+                $uptime_hours = floor(($uptime_sec % 86400) / 3600);
+                $uptime_mins = floor(($uptime_sec % 3600) / 60);
             }
         }
 
@@ -102,6 +106,8 @@ function getServerStats() {
             'disk_used' => $disk_used,
             'disk_total' => $disk_total,
             'uptime_days' => $uptime_days,
+            'uptime_hours' => $uptime_hours,
+            'uptime_mins' => $uptime_mins,
             'db_size' => $db_size,
         ];
     }
@@ -151,7 +157,7 @@ $server_stats = getServerStats();
             <div class="col-md-2 col-4 mb-2">
                 <div class="border rounded p-2">
                     <i class="fas fa-clock fa-2x text-info"></i>
-                    <h4 class="mb-0 mt-1"><?= $server_stats['uptime_days'] ?>h</h4>
+                    <h4 class="mb-0 mt-1"><?= $server_stats['uptime_days'] ?>h <?= $server_stats['uptime_hours'] ?>j</h4>
                     <small class="text-muted">Uptime</small>
                 </div>
             </div>

@@ -1,0 +1,10 @@
+/* Fix cursor DataTables pagination */
+.dataTables_wrapper .paginate_button {
+    cursor: pointer !important;
+}
+.dataTables_wrapper .paginate_button.disabled {
+    cursor: not-allowed !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    cursor: default !important;
+}

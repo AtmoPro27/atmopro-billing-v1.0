@@ -487,15 +487,15 @@ setInterval(updateJam, 1000);
                         <div class="text-center mt-3">
                             <?php if ($active_pg): ?>
                                 <a href="pilih_metode.php?id=<?= $invoice_pending['id'] ?>" class="btn btn-success btn-sm mb-1">
-                                    <i class="fas fa-credit-card"></i> Bayar Online (<?= htmlspecialchars($active_pg['name']) ?>)
+                                    <i class="fas fa-credit-card"></i> Bayar Online (<?= htmlspecialchars($active_pg['name']) ?>)<br>Konfirmasi Otomatis
                                 </a>
                                 <br>
                                 <a href="tiket_pembayaran.php?no_invoice=<?= urlencode($invoice_pending['no_invoice']) ?>&jumlah=<?= urlencode($invoice_pending['jumlah']) ?>" class="btn btn-warning btn-sm">
-                                    <i class="fas fa-paper-plane"></i> Kirim Bukti Bayar
+                                    <i class="fas fa-paper-plane"></i> Kirim Bukti Bayar<br>(Konfirmasi Manual)
                                 </a>
                             <?php else: ?>
                                 <a href="tiket_pembayaran.php?no_invoice=<?= urlencode($invoice_pending['no_invoice']) ?>&jumlah=<?= urlencode($invoice_pending['jumlah']) ?>" class="btn btn-warning btn-sm">
-                                    <i class="fas fa-paper-plane"></i> Kirim Bukti Bayar
+                                    <i class="fas fa-paper-plane"></i> Kirim Bukti Bayar<br>(Konfirmasi Manual)
                                 </a>
                             <?php endif; ?>
                         </div>
@@ -732,14 +732,14 @@ setInterval(updateJam, 1000);
                             <strong>⚠️ Ada tagihan pending!</strong>
                             <?php if ($active_pg): ?>
                                 <a href="pilih_metode.php?id=<?= $invoice_pending['id'] ?>" class="btn btn-sm btn-success mt-1 w-100 mb-1">
-                                    <i class="fas fa-credit-card"></i> Bayar Online (<?= htmlspecialchars($active_pg['name']) ?>)
+                                    <i class="fas fa-credit-card"></i> Bayar Online(<?= htmlspecialchars($active_pg['name']) ?>)<br>Konfirmasi Otomatis
                                 </a>
                                 <a href="tiket_pembayaran.php?no_invoice=<?= urlencode($invoice_pending['no_invoice']) ?>&jumlah=<?= urlencode($invoice_pending['jumlah']) ?>" class="btn btn-sm btn-warning mt-1 w-100">
-                                    <i class="fas fa-paper-plane"></i> Kirim Bukti Bayar
+                                    <i class="fas fa-paper-plane"></i> Kirim Bukti Bayar<br>(Konfirmasi Manual)
                                 </a>
                             <?php else: ?>
                                 <a href="tiket_pembayaran.php?no_invoice=<?= urlencode($invoice_pending['no_invoice']) ?>&jumlah=<?= urlencode($invoice_pending['jumlah']) ?>" class="btn btn-sm btn-warning mt-1 w-100">
-                                    <i class="fas fa-paper-plane"></i> Kirim Bukti Bayar
+                                    <i class="fas fa-paper-plane"></i> Kirim Bukti Bayar<br>(Konfirmasi Manual)
                                 </a>
                             <?php endif; ?>
                         </div>
@@ -774,7 +774,7 @@ setInterval(updateJam, 1000);
         <div class="col-md-12 mb-3">
             <div class="card border-info">
                 <div class="card-header bg-info text-white">
-                    <i class="fas fa-credit-card"></i> Informasi Pembayaran
+                    <i class="fas fa-credit-card"></i> Informasi Rekening Pembayaran (Manual)
                 </div>
                 <div class="card-body">
                     <div class="row align-items-center">
@@ -802,9 +802,10 @@ setInterval(updateJam, 1000);
                         </div>
                         <div class="col-md-5">
                             <div class="alert alert-success mb-0">
-                                <i class="fas fa-info-circle"></i> <strong>Setelah transfer:</strong><br>
+                                <i class="fas fa-info-circle"></i> <strong>Setelah transfer (manual):</strong><br>
                                 <a href="tiket_pembayaran.php" class="alert-link">Kirim bukti melalui Tiket Pembayaran</a> atau
-                                <a href="https://wa.me/<?= $wa_kasir ?>" class="alert-link" target="_blank">WhatsApp Admin</a>
+                                <a href="https://wa.me/<?= $wa_kasir ?>" class="alert-link" target="_blank">WhatsApp Admin</a><br>
+				<i class="fas fa-info-circle"></i> <strong>Pembayaran ONLINE dikonfirmasi otomatis oleh sistem, pembayaran manual / transfer dikonfirmasi manual oleh admin</strong><br>
                             </div>
                         </div>
                     </div>

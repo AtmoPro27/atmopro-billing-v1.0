@@ -4,11 +4,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 
-require_once __DIR__ . "/../../includes/session_check.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
-    exit();
-}
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 include '../../includes/header.php';
 require_once '../../config/database.php';
@@ -81,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $alamat, 
             $no_telepon, 
             $paket_id, 
-            $jatuh_tempo, 
+            $jatuh_tempo . ' 23:59:59',
             $status, 
             $status_aktif, 
             $hashed_password,

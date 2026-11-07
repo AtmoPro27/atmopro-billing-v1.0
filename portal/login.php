@@ -14,7 +14,7 @@ $settings = [];
 while ($row = $stmt->fetch()) {
     $settings[$row['key_setting']] = $row['value'];
 }
-$company_name = $settings['company_name'] ?? 'DEMO COMPANY';
+$company_name = $settings['company_name'] ?? 'AtmoBilling';
 $company_favicon = $settings['company_favicon'] ?? '';
 $company_tagline = $settings['company_tagline'] ?? 'HIGH SPEED INTERNET CONNECTION';
 
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0d5c1e">
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.php">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <?php if (!empty($company_favicon)): ?>
     <link rel="icon" type="image/x-icon" href="/<?= htmlspecialchars($company_favicon) ?>">

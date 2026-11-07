@@ -1,9 +1,5 @@
 <?php
-require_once __DIR__ . "/../../includes/session_check.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
-    exit();
-}
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 include '../../includes/header.php';
 
@@ -27,8 +23,12 @@ try {
     $stmt = $pdo->query("SELECT COALESCE(SUM(jumlah), 0) as total FROM pengeluaran WHERE jenis = 'psb' AND MONTH(tanggal) = MONTH(CURDATE()) AND YEAR(tanggal) = YEAR(CURDATE())");
     $psb = $stmt->fetch()['total'];
 
+    // Zakat
+    $stmt = $pdo->query("SELECT COALESCE(SUM(jumlah), 0) as total FROM pengeluaran WHERE jenis = 'zakat' AND MONTH(tanggal) = MONTH(CURDATE()) AND YEAR(tanggal) = YEAR(CURDATE())");
+    $zakat = $stmt->fetch()['total'];
+
     // TOTAL PENGELUARAN BULAN INI
-    $total_pengeluaran = $rutin + $maintenance + $bagi_hasil + $psb;
+    $total_pengeluaran = $rutin + $maintenance + $bagi_hasil + $psb + $zakat;
 
     // HARI INI
     $stmt = $pdo->query("SELECT COALESCE(SUM(jumlah), 0) as total FROM pengeluaran WHERE DATE(tanggal) = CURDATE()");
@@ -44,6 +44,7 @@ try {
     $maintenance = 0;
     $bagi_hasil = 0;
     $psb = 0;
+    $zakat = 0;
     $total_pengeluaran = 0;
     $today = 0;
     $year = 0;
@@ -73,9 +74,9 @@ try {
     }
 </style>
 
-<div class="row">
+<div class="row justify-content-center">
     <!-- RUTIN -->
-    <div class="col-md-4 mb-3">
+    <div class="col mb-3">
         <div class="stat-box" style="background: linear-gradient(135deg, #2b5876, #4e4376);">
             <i class="fas fa-repeat fa-2x mb-2"></i>
             <h2 style="color: white;">Rp <?= number_format($rutin, 0, ',', '.') ?></h2>
@@ -84,7 +85,7 @@ try {
     </div>
 
     <!-- MAINTENANCE -->
-    <div class="col-md-4 mb-3">
+    <div class="col mb-3">
         <div class="stat-box" style="background: linear-gradient(135deg, #c0392b, #e74c3c);">
             <i class="fas fa-tools fa-2x mb-2"></i>
             <h2 style="color: white;">Rp <?= number_format($maintenance, 0, ',', '.') ?></h2>
@@ -93,18 +94,27 @@ try {
     </div>
 
     <!-- BAGI HASIL -->
-    <div class="col-md-4 mb-3">
+    <div class="col mb-3">
         <div class="stat-box" style="background: linear-gradient(135deg, #f39c12, #e67e22);">
             <i class="fas fa-hand-holding-usd fa-2x mb-2"></i>
             <h2 style="color: white;">Rp <?= number_format($bagi_hasil, 0, ',', '.') ?></h2>
             <small>BAGI HASIL</small>
         </div>
     </div>
+
+    <!-- ZAKAT -->
+    <div class="col mb-3">
+        <div class="stat-box" style="background: linear-gradient(135deg, #28a745, #20c997);">
+            <i class="fas fa-hand-holding-heart fa-2x mb-2"></i>
+            <h2 style="color: white;">Rp <?= number_format($zakat, 0, ',', '.') ?></h2>
+            <small>ZAKAT BULAN INI</small>
+        </div>
+    </div>
 </div>
 
 <div class="row mt-2">
     <!-- BULAN INI -->
-    <div class="col-md-4 mb-3">
+    <div class="col mb-3">
         <div class="stat-box" style="background: linear-gradient(135deg, #1a2980, #26d0ce);">
             <i class="fas fa-calendar-alt fa-2x mb-2"></i>
             <h2 style="color: white;">Rp <?= number_format($total_pengeluaran, 0, ',', '.') ?></h2>
@@ -113,7 +123,7 @@ try {
     </div>
 
     <!-- TOTAL PENGELUARAN -->
-    <div class="col-md-4 mb-3">
+    <div class="col mb-3">
         <div class="stat-box" style="background: linear-gradient(135deg, #0d5c1e, #1a8a2d);">
             <i class="fas fa-coins fa-2x mb-2"></i>
             <h2 style="color: white;">Rp <?= number_format($total_pengeluaran, 0, ',', '.') ?></h2>
@@ -122,7 +132,7 @@ try {
     </div>
 
     <!-- TAHUN INI -->
-    <div class="col-md-4 mb-3">
+    <div class="col mb-3">
         <div class="stat-box" style="background: linear-gradient(135deg, #8e44ad, #9b59b6);">
             <i class="fas fa-calendar-alt fa-2x mb-2"></i>
             <h2 style="color: white;">Rp <?= number_format($year, 0, ',', '.') ?></h2>
@@ -175,14 +185,16 @@ try {
                                 'rutin' => 'Rutin',
                                 'maintenance' => 'Maintenance',
                                 'bagi_hasil' => 'Bagi Hasil',
-                                'psb' => 'PSB'
+                                'psb' => 'PSB',
+                                'zakat' => 'Zakat'
                             ][$row['jenis']] ?? $row['jenis'];
 
                             $jenis_badge = [
                                 'rutin' => 'bg-secondary',
                                 'maintenance' => 'bg-danger',
                                 'bagi_hasil' => 'bg-warning text-dark',
-                                'psb' => 'bg-info'
+                                'psb' => 'bg-info',
+                                'zakat' => 'bg-success'
                             ][$row['jenis']] ?? 'bg-secondary';
 
                             echo '<tr>';

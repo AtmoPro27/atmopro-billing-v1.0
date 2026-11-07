@@ -1,9 +1,5 @@
 <?php
-require_once __DIR__ . "/../../includes/session_check.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
-    exit();
-}
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 include '../../includes/header.php';
 require_once '../../config/database.php';
@@ -36,9 +32,28 @@ $filter_status = isset($_GET['status']) ? $_GET['status'] : 'all';
 <div class="card">
     <div class="card-header">
         <i class="fas fa-file-invoice"></i> Manajemen Tagihan
-        <a href="create.php" class="btn btn-primary btn-sm float-end">
-            <i class="fas fa-plus"></i> Buat Tagihan Baru
-        </a>
+        <div class="float-end d-flex gap-2 align-items-center">
+            <a href="create.php" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Buat Tagihan Baru
+            </a>
+            <form method="GET" action="export_tagihan_pdf.php" target="_blank" class="d-inline-flex gap-1 align-items-center" style="margin:0;">
+                <select name="bulan" class="form-select form-select-sm" style="width:auto;">
+                    <?php
+                    $nama_bulan_opt = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+                    for ($i = 1; $i <= 12; $i++):
+                    ?>
+                        <option value="<?= $i ?>" <?= $i == (int)date('n') ? 'selected' : '' ?>>
+                            <?= $nama_bulan_opt[$i-1] ?>
+                        </option>
+                    <?php endfor; ?>
+                </select>
+                <input type="number" name="tahun" class="form-control form-control-sm" value="<?= date('Y') ?>" min="2000" max="2100" style="width:80px;">
+                <input type="hidden" name="status" value="<?= htmlspecialchars($filter_status) ?>">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </button>
+            </form>
+        </div>
     </div>
     <div class="card-body">
         <?php if ($success_msg): ?>
