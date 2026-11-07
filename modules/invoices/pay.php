@@ -47,14 +47,35 @@ $pdo = Database::getInstance()->getConnection();
                 $stmt_save->execute([$old_due, $id]);
             }
 
-            // Perpanjang jatuh tempo +1 bulan dan aktifkan status
+            // Ambil tgl_terbit invoice untuk cek invoice baru vs nunggakan
+            $stmt_terbit = $pdo->prepare("SELECT tgl_terbit FROM invoice WHERE id = ?");
+            $stmt_terbit->execute([$id]);
+            $tgl_terbit = $stmt_terbit->fetchColumn();
+
+            $bulan_terbit = date('Y-m', strtotime($tgl_terbit));
+            $bulan_ini    = date('Y-m');
+            $hari_ini     = (int)date('j');
+
+            if ($bulan_terbit === $bulan_ini) {
+                // Invoice baru (terbit bulan ini) => jatuh tempo bulan depan tgl 20
+                $jatuh_tempo_baru = date('Y-m-20 23:59:59', strtotime('+1 month'));
+            } else {
+                // Nunggakan: bayar tgl 1-14 => bulan ini, tgl 15+ => bulan depan
+                if ($hari_ini <= 14) {
+                    $jatuh_tempo_baru = date('Y-m-20 23:59:59');
+                } else {
+                    $jatuh_tempo_baru = date('Y-m-20 23:59:59', strtotime('+1 month'));
+                }
+            }
+
+            // Perpanjang jatuh tempo dan aktifkan status
             $stmt = $pdo->prepare("
                 UPDATE pelanggan
-                SET jatuh_tempo = DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-20'), INTERVAL 1 MONTH) + INTERVAL 23 HOUR + INTERVAL 59 MINUTE + INTERVAL 59 SECOND,
+                SET jatuh_tempo = ?,
                     status = 'active'
                 WHERE id = ?
             ");
-            $stmt->execute([$invoice['pelanggan_id']]);
+            $stmt->execute([$jatuh_tempo_baru, $invoice['pelanggan_id']]);
 
             // Aktifkan user di Mikrotik via API
             require_once __DIR__ . '/../../includes/mikrotik_api.php';
