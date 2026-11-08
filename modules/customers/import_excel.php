@@ -118,23 +118,24 @@ $pdo = Database::getInstance()->getConnection();
                         // Parse tanggal jatuh tempo
                         $jatuh_tempo_db = null;
                         if (!empty($jatuh_tempo) && $jatuh_tempo != '-') {
-                            $jatuh_tempo_db = date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $jatuh_tempo)));
-                            if ($jatuh_tempo_db == '1970-01-01 00:00:00') {
+                            $jatuh_tempo_db = date('Y-m-d 23:59:59', strtotime(str_replace('/', '-', $jatuh_tempo)));
+                            if ($jatuh_tempo_db == '1970-01-01 23:59:59') {
                                 $jatuh_tempo_db = null;
                             }
                         }
 
                         if ($jatuh_tempo_db == null) {
-                            $jatuh_tempo_db = date('Y-m-d H:i:s', strtotime('+30 days'));
+                            $jatuh_tempo_db = date('Y-m-d 23:59:59', strtotime('+30 days'));
                         }
 
                         try {
                             // START TRANSACTION
                             $pdo->beginTransaction();
 
-                            // 1. Insert ke tabel pelanggan
-                            $stmt = $pdo->prepare("INSERT INTO pelanggan (id_pelanggan, nama_lengkap, alamat, no_telepon, tipe_pelanggan, jatuh_tempo, status, paket_id, password, status_aktif, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '123456', 'aktif', NOW())");
-                            $stmt->execute([$id_pelanggan, $nama_lengkap, $alamat, $no_telepon, $tipe_pelanggan, $jatuh_tempo_db, $status_db, $package_id]);
+                            // 1. Insert ke tabel pelanggan (password di-hash)
+                            $hashed_password = password_hash('123456', PASSWORD_DEFAULT);
+                            $stmt = $pdo->prepare("INSERT INTO pelanggan (id_pelanggan, nama_lengkap, alamat, no_telepon, tipe_pelanggan, jatuh_tempo, status, paket_id, password, status_aktif, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', NOW())");
+                            $stmt->execute([$id_pelanggan, $nama_lengkap, $alamat, $no_telepon, $tipe_pelanggan, $jatuh_tempo_db, $status_db, $package_id, $hashed_password]);
 
                             // Ambil ID pelanggan yang baru diinsert
                             $pelanggan_id = $pdo->lastInsertId();
