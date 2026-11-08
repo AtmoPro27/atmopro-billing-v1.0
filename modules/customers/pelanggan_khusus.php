@@ -1,9 +1,5 @@
 <?php
-require_once __DIR__ . "/../../includes/auth_check.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
-    exit();
-}
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 // ============================================
 // CEK ROLE USER
@@ -55,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
             $pelanggan_id = $_POST['pelanggan_id'] ?? '';
 
             // Ambil data pelanggan dulu
-            $stmt = $pdo->prepare("SELECT * FROM pelanggan WHERE id = ? AND tipe_pelanggan IN ('vip', 'fasum')");
+            $stmt = $pdo->prepare("SELECT * FROM pelanggan WHERE id = ? AND tipe_pelanggan IN ('vip', 'fasum', 'nardi')");
             $stmt->execute([$pelanggan_id]);
             $pelanggan = $stmt->fetch();
 
@@ -220,8 +216,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
                     $mikrotik_result = add_pppoe_user($paket_data['router_id'], $id_pelanggan, $password_ppp, $paket_data['profil_ppp']);
 
                     if ($mikrotik_result['success']) {
+                        $hashed_password = password_hash($password_ppp, PASSWORD_DEFAULT);
                         $stmt_upd = $pdo->prepare("UPDATE pelanggan SET password = ? WHERE id_pelanggan = ?");
-                        $stmt_upd->execute([$password_ppp, $id_pelanggan]);
+                        $stmt_upd->execute([$hashed_password, $id_pelanggan]);
                         $msg_extra = ' Secret Mikrotik berhasil dibuat.';
                     } else {
                         $msg_extra = ' TAPI gagal buat secret: ' . $mikrotik_result['message'];
@@ -257,11 +254,12 @@ $stmt = $pdo->query("
     FROM pelanggan p
     LEFT JOIN paket_internet pk ON p.paket_id = pk.id
     LEFT JOIN routers r ON pk.router_id = r.id
-    WHERE p.tipe_pelanggan IN ('vip', 'fasum')
+    WHERE p.tipe_pelanggan IN ('vip', 'fasum', 'nardi')
     ORDER BY 
         CASE p.tipe_pelanggan 
             WHEN 'vip' THEN 1 
             WHEN 'fasum' THEN 2 
+            WHEN 'nardi' THEN 3
             ELSE 4 
         END,
         p.id_pelanggan ASC
@@ -353,6 +351,7 @@ unset($data);
 
 $total_vip = count(array_filter($pelanggan_khusus, function($p) { return $p['tipe_pelanggan'] == 'vip'; }));
 $total_fasum = count(array_filter($pelanggan_khusus, function($p) { return $p['tipe_pelanggan'] == 'fasum'; }));
+$total_nardi = count(array_filter($pelanggan_khusus, function($p) { return $p['tipe_pelanggan'] == 'nardi'; }));
 
 $total_online = 0;
 foreach ($pelanggan_khusus as $p) {
@@ -366,9 +365,11 @@ foreach ($pelanggan_khusus as $p) {
     .tipe-badge { font-size: 12px; padding: 5px 10px; border-radius: 20px; }
     .badge-vip { background: linear-gradient(135deg, #ffc107, #ff9800); color: #000; font-weight: bold; }
     .badge-fasum { background: linear-gradient(135deg, #17a2b8, #138496); color: white; font-weight: bold; }
+    .badge-nardi { background: linear-gradient(135deg, #0066cc, #004499); color: white; font-weight: bold; }
     .stat-box { border-radius: 10px; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .stat-vip { background: linear-gradient(135deg, #ffc107, #ff9800); color: #000; }
     .stat-fasum { background: linear-gradient(135deg, #17a2b8, #138496); color: white; }
+    .stat-nardi { background: linear-gradient(135deg, #0066cc, #004499); color: white; }
     .stat-total { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
     .table-khusus th { background-color: #f8f9fc; font-size: 13px; }
     .table-khusus td { font-size: 13px; vertical-align: middle; }
@@ -408,21 +409,28 @@ foreach ($pelanggan_khusus as $p) {
 
 <div class="container-fluid p-3">
     <div class="row mb-3">
-        <div class="col-md-4 col-6 mb-2">
+        <div class="col-md-3 col-6 mb-2">
             <div class="stat-box stat-vip">
                 <i class="fas fa-crown fa-2x"></i>
                 <h4 class="mt-2 mb-0"><?= $total_vip ?></h4>
                 <small>VIP</small>
             </div>
         </div>
-        <div class="col-md-4 col-6 mb-2">
+        <div class="col-md-3 col-6 mb-2">
             <div class="stat-box stat-fasum">
                 <i class="fas fa-building fa-2x"></i>
                 <h4 class="mt-2 mb-0"><?= $total_fasum ?></h4>
                 <small>FASUM</small>
             </div>
         </div>
-        <div class="col-md-4 col-6 mb-2">
+        <div class="col-md-3 col-6 mb-2">
+            <div class="stat-box stat-nardi">
+                <i class="fas fa-satellite-dish fa-2x"></i>
+                <h4 class="mt-2 mb-0"><?= $total_nardi ?></h4>
+                <small>NARDI</small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-2">
             <div class="stat-box stat-total">
                 <i class="fas fa-wifi fa-2x"></i>
                 <h4 class="mt-2 mb-0"><?= $total_online ?></h4>
@@ -468,6 +476,7 @@ foreach ($pelanggan_khusus as $p) {
                         <option value="">Semua Tipe</option>
                         <option value="vip">⭐ VIP</option>
                         <option value="fasum">🏛️ FASUM</option>
+                        <option value="nardi">📡 NARDI</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -521,6 +530,8 @@ foreach ($pelanggan_khusus as $p) {
                                             <span class="badge badge-vip tipe-badge">⭐ VIP</span>
                                         <?php elseif ($p['tipe_pelanggan'] == 'fasum'): ?>
                                             <span class="badge badge-fasum tipe-badge">🏛️ FASUM</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-nardi tipe-badge">📡 NARDI</span>
                                         <?php endif; ?>
                                     </td>
                                     <td><strong><?= htmlspecialchars($p['id_pelanggan']) ?></strong></td>
@@ -600,6 +611,7 @@ foreach ($pelanggan_khusus as $p) {
                         <select id="form_tipe_pelanggan" class="form-select">
                             <option value="vip">⭐ VIP</option>
                             <option value="fasum">🏛️ FASUM</option>
+                            <option value="nardi">📡 NARDI</option>
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">
@@ -848,9 +860,9 @@ function sortTable(column, order) {
             bVal = bVal.includes('Online') ? '1' : '0';
         }
         
-        // Khusus kolom Tipe (kolom 0) — urutkan berdasarkan VIP/FASUM
+        // Khusus kolom Tipe (kolom 0) — urutkan berdasarkan VIP/FASUM/NARDI
         if (column === 0) {
-            const tipeOrder = { 'VIP': '1', 'FASUM': '2' };
+            const tipeOrder = { 'VIP': '1', 'FASUM': '2', 'NARDI': '3' };
             for (let key in tipeOrder) {
                 if (aVal.includes(key)) aVal = tipeOrder[key];
                 if (bVal.includes(key)) bVal = tipeOrder[key];
