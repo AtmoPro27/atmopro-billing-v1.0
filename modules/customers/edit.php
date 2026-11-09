@@ -45,8 +45,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $status = $_POST['status'];
     
     try {
+        // Cek paket lama vs paket baru — apakah berubah?
+        $stmt_cek = $pdo->prepare("SELECT paket_id FROM pelanggan WHERE id_pelanggan = ?");
+        $stmt_cek->execute([$id_pelanggan]);
+        $paket_lama = $stmt_cek->fetchColumn();
+
         $stmt = $pdo->prepare("UPDATE pelanggan SET nama_lengkap = ?, alamat = ?, no_telepon = ?, paket_id = ?, jatuh_tempo = ?, status = ? WHERE id_pelanggan = ?");
         $stmt->execute([$nama_lengkap, $alamat, $no_telepon, $paket_id, $jatuh_tempo, $status, $id_pelanggan]);
+
+        // Kalau paket berubah, tangani di MikroTik
+        if ($paket_id != $paket_lama && $paket_id) {
+            require_once __DIR__ . '/../../includes/mikrotik_api.php';
+
+            // Ambil info paket baru
+            $stmt_p = $pdo->prepare("SELECT profil_ppp, router_id FROM paket_internet WHERE id = ?");
+            $stmt_p->execute([$paket_id]);
+            $pkg_baru = $stmt_p->fetch();
+
+            // Ambil info paket lama (router + profil)
+            $stmt_old = $pdo->prepare("SELECT profil_ppp, router_id FROM paket_internet WHERE id = ?");
+            $stmt_old->execute([$paket_lama]);
+            $pkg_lama = $stmt_old->fetch();
+
+            if ($pkg_baru && !empty($pkg_baru['profil_ppp']) && !empty($pkg_baru['router_id'])) {
+                $old_router = $pkg_lama['router_id'] ?? null;
+                $new_router = $pkg_baru['router_id'];
+
+                if ($old_router && $old_router != $new_router) {
+                    // Beda router: hapus di lama, buat di baru
+                    $mikrotik_result = move_pppoe_user($old_router, $new_router, $id_pelanggan, '123456', $pkg_baru['profil_ppp']);
+                    error_log("move_pppoe_user: " . json_encode($mikrotik_result));
+                } else {
+                    // Sama router: update profile + kick sesi
+                    $mikrotik_result = update_pppoe_profile($new_router, $id_pelanggan, '123456', $pkg_baru['profil_ppp']);
+                    error_log("update_pppoe_profile: " . json_encode($mikrotik_result));
+                }
+            }
+        }
         
         // Update jatuh tempo di invoice yang pending
         $stmt_inv = $pdo->prepare("UPDATE invoice SET tgl_jatuh_tempo = ? WHERE pelanggan_id = ? AND status = 'pending'");
