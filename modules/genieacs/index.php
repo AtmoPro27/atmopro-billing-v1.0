@@ -324,6 +324,7 @@ jQuery(document).ready(function() {
     dataTable = jQuery('#deviceTable').DataTable({
         "paging": false,
         "info": false,
+        "searching": false,
         "ordering": true,
         "stateSave": false,
         "order": [],
@@ -343,6 +344,19 @@ jQuery(document).ready(function() {
         }
     });
     
+
+    // Auto-submit search (debounce 500ms)
+    const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
+    if (searchInput && searchForm) {
+        let timer = null;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timer);
+            timer = setTimeout(function() {
+                searchForm.submit();
+            }, 500);
+        });
+    }
 });
 
 function testKoneksi() {
@@ -493,7 +507,19 @@ function testKoneksi() {
         <!-- Search & Filter -->
         <div class="row mb-3">
             <div class="col-md-6">
-
+                <form method="get" class="d-flex" id="searchForm">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" id="searchInput" class="form-control"
+                               placeholder="Cari ID / nama / SSID / IP..."
+                               value="<?= htmlspecialchars($search) ?>" autocomplete="off">
+                        <?php if (!empty($search)): ?>
+                        <a href="index.php" class="btn btn-outline-secondary" title="Clear">
+                            <i class="fas fa-times"></i>
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </form>
             </div>
         </div>
 

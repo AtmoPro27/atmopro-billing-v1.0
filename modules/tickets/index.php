@@ -17,24 +17,41 @@ try {
 // Pagination
 $per_page = 10;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-$total_tiket = (int)$pdo->query("SELECT COUNT(*) FROM tickets")->fetchColumn();
+$where = "";
+$params_where = [];
+if ($search !== '') {
+    $where = " WHERE (t.no_ticket LIKE ? OR t.subject LIKE ? OR t.status LIKE ? OR p.nama_lengkap LIKE ? OR p.id_pelanggan LIKE ?)";
+    $kw = '%' . $search . '%';
+    $params_where = [$kw, $kw, $kw, $kw, $kw];
+}
+
+$sql_count = "SELECT COUNT(*) FROM tickets t LEFT JOIN pelanggan p ON t.pelanggan_id = p.id" . $where;
+$stmt_count = $pdo->prepare($sql_count);
+$stmt_count->execute($params_where);
+$total_tiket = (int)$stmt_count->fetchColumn();
 $total_pages = max(1, (int)ceil($total_tiket / $per_page));
 if ($page > $total_pages) $page = $total_pages;
 $offset = ($page - 1) * $per_page;
 
-$stmt = $pdo->prepare("
+$sql = "
     SELECT
         t.*,
         p.nama_lengkap as customer_name,
         p.id_pelanggan as customer_code
     FROM tickets t
     LEFT JOIN pelanggan p ON t.pelanggan_id = p.id
+    " . $where . "
     ORDER BY t.created_at DESC, t.id DESC
-    LIMIT ? OFFSET ?
-");
-$stmt->bindValue(1, $per_page, PDO::PARAM_INT);
-$stmt->bindValue(2, $offset, PDO::PARAM_INT);
+    LIMIT ? OFFSET ?";
+$stmt = $pdo->prepare($sql);
+$bind_idx = 1;
+foreach ($params_where as $pw) {
+    $stmt->bindValue($bind_idx++, $pw);
+}
+$stmt->bindValue($bind_idx++, $per_page, PDO::PARAM_INT);
+$stmt->bindValue($bind_idx, $offset, PDO::PARAM_INT);
 $stmt->execute();
 $tickets = $stmt->fetchAll();
 
@@ -81,6 +98,20 @@ $priorityBadges = [
         </div>
     </div>
     <div class="card-body">
+        <form method="get" class="mb-3 d-flex" id="searchForm" style="max-width:400px;">
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" name="search" id="searchInput" class="form-control"
+                       placeholder="Cari no tiket / nama / ID / subject..."
+                       value="<?= htmlspecialchars($search) ?>" autocomplete="off">
+                <?php if ($search !== ''): ?>
+                <a href="index.php" class="btn btn-outline-secondary" title="Clear">
+                    <i class="fas fa-times"></i>
+                </a>
+                <?php endif; ?>
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table class="table table-bordered table-hover" id="ticketTable">
                 <thead>
@@ -198,6 +229,7 @@ $(document).ready(function() {
     $('#ticketTable').DataTable({
         "paging": false,
         "info": false,
+        "searching": false,
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Indonesian.json"
         },
@@ -206,6 +238,19 @@ $(document).ready(function() {
             { "orderable": false, "targets": [0, 1, 2, 3, 4, 5, 6] }
         ]
     });
+
+    // Auto-submit search (debounce 500ms)
+    const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
+    if (searchInput && searchForm) {
+        let timer = null;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timer);
+            timer = setTimeout(function() {
+                searchForm.submit();
+            }, 500);
+        });
+    }
 });
 </script>
 

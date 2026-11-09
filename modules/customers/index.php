@@ -78,11 +78,25 @@ if (isset($_SESSION['activation_message'])) {
         <?php endif; ?>
         
         <!-- Tombol filter -->
-        <div class="mb-3">
-            <a href="index.php" class="btn btn-sm btn-secondary">Semua</a>
-            <a href="index.php?status=active" class="btn btn-sm btn-success">Aktif</a>
-            <a href="index.php?status=inactive" class="btn btn-sm btn-danger">Isolir</a>
-            <a href="index.php?status=blocked" class="btn btn-sm btn-dark">Blokir</a>
+        <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+            <?php
+            $qs_filter = $search !== '' ? '&search=' . urlencode($search) : '';
+            ?>
+            <a href="index.php?<?= $qs_filter ? ltrim($qs_filter, '&') : '' ?>" class="btn btn-sm btn-secondary">Semua</a>
+            <a href="index.php?status=active<?= $qs_filter ?>" class="btn btn-sm btn-success">Aktif</a>
+            <a href="index.php?status=inactive<?= $qs_filter ?>" class="btn btn-sm btn-danger">Isolir</a>
+            <a href="index.php?status=blocked<?= $qs_filter ?>" class="btn btn-sm btn-dark">Blokir</a>
+
+            <form method="get" class="d-flex ms-auto" style="max-width:300px;">
+                <?php if ($status_filter != 'all'): ?>
+                    <input type="hidden" name="status" value="<?= htmlspecialchars($status_filter) ?>">
+                <?php endif; ?>
+                <input type="text" name="search" id="searchInput" class="form-control me-1" placeholder="Cari ID / nama / alamat / telp..." value="<?= htmlspecialchars($search) ?>" autocomplete="off" style="min-height:38px;">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
+                <?php if ($search !== ''): ?>
+                    <a href="index.php<?= $status_filter != 'all' ? '?status=' . urlencode($status_filter) : '' ?>" class="btn btn-danger btn-sm ms-1" style="min-width:40px;min-height:32px;" title="Hapus pencarian"><i class="fas fa-times"></i></a>
+                <?php endif; ?>
+            </form>
         </div>
         
         <div class="table-responsive">
@@ -128,9 +142,20 @@ if (isset($_SESSION['activation_message'])) {
                             $where .= " AND p.status = 'blocked'";
                         }
 
+                        // Pencarian server-side
+                        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+                        $params_where = [];
+                        if ($search !== '') {
+                            $where .= " AND (p.id_pelanggan LIKE ? OR p.nama_lengkap LIKE ? OR p.alamat LIKE ? OR p.no_telepon LIKE ?)";
+                            $kw = '%' . $search . '%';
+                            $params_where = [$kw, $kw, $kw, $kw];
+                        }
+
                         // Hitung total
                         $sql_count = "SELECT COUNT(*) FROM pelanggan p" . $where;
-                        $total_pelanggan = (int)$pdo->query($sql_count)->fetchColumn();
+                        $stmt_count = $pdo->prepare($sql_count);
+                        $stmt_count->execute($params_where);
+                        $total_pelanggan = (int)$stmt_count->fetchColumn();
                         $total_pages = max(1, (int)ceil($total_pelanggan / $per_page));
                         if ($page > $total_pages) $page = $total_pages;
                         $offset = ($page - 1) * $per_page;
@@ -142,8 +167,12 @@ if (isset($_SESSION['activation_message'])) {
                                 ORDER BY p.id_pelanggan ASC
                                 LIMIT ? OFFSET ?";
                         $stmt = $pdo->prepare($sql);
-                        $stmt->bindValue(1, $per_page, PDO::PARAM_INT);
-                        $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+                        $bind_idx = 1;
+                        foreach ($params_where as $pw) {
+                            $stmt->bindValue($bind_idx++, $pw);
+                        }
+                        $stmt->bindValue($bind_idx++, $per_page, PDO::PARAM_INT);
+                        $stmt->bindValue($bind_idx, $offset, PDO::PARAM_INT);
                         $stmt->execute();
                         
                         $today = new DateTime();
@@ -278,10 +307,32 @@ $(document).ready(function() {
     $('#customersTable').DataTable({
         "paging": false,
         "info": false,
+        "searching": false,
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json"
         }
     });
+
+    // Auto-search dengan debounce
+    let searchTimer = null;
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            const value = this.value;
+            searchTimer = setTimeout(function() {
+                const url = new URL(window.location.href);
+                if (value.trim() === '') {
+                    url.searchParams.delete('search');
+                } else {
+                    url.searchParams.set('search', value);
+                }
+                url.searchParams.delete('page'); // reset ke halaman 1
+                window.location.href = url.toString();
+            }, 400);
+        });
+        // Jangan fokus otomatis (biar keyboard HP tidak muncul)
+    }
 });
 </script>
 

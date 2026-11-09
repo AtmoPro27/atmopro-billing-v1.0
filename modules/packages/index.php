@@ -32,6 +32,20 @@ if (isset($_GET['success'])) {
             </div>
         <?php endif; ?>
         
+        <form method="get" class="mb-3 d-flex" id="searchForm" style="max-width:400px;">
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" name="search" id="searchInput" class="form-control"
+                       placeholder="Cari nama paket / profil PPP..."
+                       value="<?= htmlspecialchars($search) ?>" autocomplete="off">
+                <?php if ($search !== ''): ?>
+                <a href="index.php" class="btn btn-outline-secondary" title="Clear">
+                    <i class="fas fa-times"></i>
+                </a>
+                <?php endif; ?>
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table id="packagesTable" class="table table-bordered table-striped">
                 <thead>
@@ -53,15 +67,32 @@ $pdo = Database::getInstance()->getConnection();
                         // Pagination
                         $per_page = 10;
                         $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+                        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-                        $total_paket = (int)$pdo->query("SELECT COUNT(*) FROM paket_internet")->fetchColumn();
+                        $where = "";
+                        $params_where = [];
+                        if ($search !== '') {
+                            $where = " WHERE (p.nama_paket LIKE ? OR p.profil_ppp LIKE ?)";
+                            $kw = '%' . $search . '%';
+                            $params_where = [$kw, $kw];
+                        }
+
+                        $sql_count = "SELECT COUNT(*) FROM paket_internet p" . $where;
+                        $stmt_count = $pdo->prepare($sql_count);
+                        $stmt_count->execute($params_where);
+                        $total_paket = (int)$stmt_count->fetchColumn();
                         $total_pages = max(1, (int)ceil($total_paket / $per_page));
                         if ($page > $total_pages) $page = $total_pages;
                         $offset = ($page - 1) * $per_page;
 
-                        $stmt = $pdo->prepare("SELECT p.*, r.nama_router, r.ip_address FROM paket_internet p LEFT JOIN routers r ON p.router_id = r.id ORDER BY p.id DESC LIMIT ? OFFSET ?");
-                        $stmt->bindValue(1, $per_page, PDO::PARAM_INT);
-                        $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+                        $sql = "SELECT p.*, r.nama_router, r.ip_address FROM paket_internet p LEFT JOIN routers r ON p.router_id = r.id" . $where . " ORDER BY p.id DESC LIMIT ? OFFSET ?";
+                        $stmt = $pdo->prepare($sql);
+                        $bind_idx = 1;
+                        foreach ($params_where as $pw) {
+                            $stmt->bindValue($bind_idx++, $pw);
+                        }
+                        $stmt->bindValue($bind_idx++, $per_page, PDO::PARAM_INT);
+                        $stmt->bindValue($bind_idx, $offset, PDO::PARAM_INT);
                         $stmt->execute();
                         while ($row = $stmt->fetch()) {
                             $status_badge = ($row['is_active'] == 1) ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-danger">Inactive</span>';
@@ -136,10 +167,24 @@ $(document).ready(function() {
     $('#packagesTable').DataTable({
         paging: false,
         info: false,
+        searching: false,
         language: {
             url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json'
         }
     });
+
+    // Auto-submit search (debounce 500ms)
+    const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
+    if (searchInput && searchForm) {
+        let timer = null;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timer);
+            timer = setTimeout(function() {
+                searchForm.submit();
+            }, 500);
+        });
+    }
 });
 </script>
 

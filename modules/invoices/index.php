@@ -72,6 +72,23 @@ $filter_status = isset($_GET['status']) ? $_GET['status'] : 'all';
             </div>
         </div>
         
+        <form method="get" class="mb-3 d-flex" id="searchForm" style="max-width:400px;">
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" name="search" id="searchInput" class="form-control"
+                       placeholder="Cari no invoice / nama / ID pelanggan..."
+                       value="<?= htmlspecialchars($search) ?>" autocomplete="off">
+                <?php if ($filter_status != 'all'): ?>
+                    <input type="hidden" name="status" value="<?= htmlspecialchars($filter_status) ?>">
+                <?php endif; ?>
+                <?php if ($search !== '' || $filter_status != 'all'): ?>
+                <a href="index.php" class="btn btn-outline-secondary" title="Clear">
+                    <i class="fas fa-times"></i>
+                </a>
+                <?php endif; ?>
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table id="invoicesTable" class="table table-bordered table-striped">
                 <thead>
@@ -92,15 +109,30 @@ $filter_status = isset($_GET['status']) ? $_GET['status'] : 'all';
                     // Pagination
                     $per_page = 10;
                     $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+                    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
                     $where = "";
                     $params = [];
+                    $cond = [];
+
                     if ($filter_status != 'all') {
-                        $where = " WHERE i.status = ? ";
+                        $cond[] = "i.status = ?";
                         $params[] = $filter_status;
                     }
 
-                    $sql_count = "SELECT COUNT(*) FROM invoice i" . $where;
+                    if ($search !== '') {
+                        $cond[] = "(i.no_invoice LIKE ? OR p.nama_lengkap LIKE ? OR p.id_pelanggan LIKE ?)";
+                        $kw = '%' . $search . '%';
+                        $params[] = $kw;
+                        $params[] = $kw;
+                        $params[] = $kw;
+                    }
+
+                    if (!empty($cond)) {
+                        $where = " WHERE " . implode(" AND ", $cond);
+                    }
+
+                    $sql_count = "SELECT COUNT(*) FROM invoice i LEFT JOIN pelanggan p ON i.pelanggan_id = p.id" . $where;
                     $stmt_count = $pdo->prepare($sql_count);
                     $stmt_count->execute($params);
                     $total_tagihan = (int)$stmt_count->fetchColumn();
@@ -208,11 +240,25 @@ $(document).ready(function() {
     $('#invoicesTable').DataTable({
         paging: false,
         info: false,
+        searching: false,
         language: {
             url: "//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json"
         },
         order: []
     });
+
+    // Auto-submit search (debounce 500ms)
+    const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
+    if (searchInput && searchForm) {
+        let timer = null;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timer);
+            timer = setTimeout(function() {
+                searchForm.submit();
+            }, 500);
+        });
+    }
 });
 </script>
 

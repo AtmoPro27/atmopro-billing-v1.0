@@ -249,35 +249,60 @@ include '../../includes/header.php';
 // ============================================
 // AMBIL DATA PELANGGAN KHUSUS
 // ============================================
-// Pagination
+// Pagination + filter
 $per_page = 20;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$filter_tipe = isset($_GET['tipe']) ? trim($_GET['tipe']) : '';
 
-// Hitung total pelanggan khusus
-$total_khusus = (int)$pdo->query("SELECT COUNT(*) FROM pelanggan WHERE tipe_pelanggan IN ('vip', 'fasum', 'nardi')")->fetchColumn();
+$where = " WHERE p.tipe_pelanggan IN ('vip', 'fasum', 'nardi')";
+$params_where = [];
+
+if (in_array($filter_tipe, ['vip', 'fasum', 'nardi'])) {
+    $where .= " AND p.tipe_pelanggan = ?";
+    $params_where[] = $filter_tipe;
+}
+
+if ($search !== '') {
+    $where .= " AND (p.id_pelanggan LIKE ? OR p.nama_lengkap LIKE ? OR p.alamat LIKE ? OR p.no_telepon LIKE ?)";
+    $kw = '%' . $search . '%';
+    $params_where[] = $kw;
+    $params_where[] = $kw;
+    $params_where[] = $kw;
+    $params_where[] = $kw;
+}
+
+// Hitung total
+$sql_count = "SELECT COUNT(*) FROM pelanggan p" . $where;
+$stmt_count = $pdo->prepare($sql_count);
+$stmt_count->execute($params_where);
+$total_khusus = (int)$stmt_count->fetchColumn();
 $total_pages = max(1, (int)ceil($total_khusus / $per_page));
 if ($page > $total_pages) $page = $total_pages;
 $offset = ($page - 1) * $per_page;
 
-// Ambil data pelanggan khusus hanya untuk halaman aktif
-$stmt = $pdo->prepare("
-    SELECT p.*, pk.nama_paket, pk.harga, pk.router_id, r.nama_router
-    FROM pelanggan p
-    LEFT JOIN paket_internet pk ON p.paket_id = pk.id
-    LEFT JOIN routers r ON pk.router_id = r.id
-    WHERE p.tipe_pelanggan IN ('vip', 'fasum', 'nardi')
-    ORDER BY
-        CASE p.tipe_pelanggan
-            WHEN 'vip' THEN 1
-            WHEN 'fasum' THEN 2
-            WHEN 'nardi' THEN 3
-            ELSE 4
-        END,
-        p.id_pelanggan ASC
-    LIMIT ? OFFSET ?
-");
-$stmt->bindValue(1, $per_page, PDO::PARAM_INT);
-$stmt->bindValue(2, $offset, PDO::PARAM_INT);
+// Ambil data hanya halaman aktif
+$sql = "SELECT p.*, pk.nama_paket, pk.harga, pk.router_id, r.nama_router
+        FROM pelanggan p
+        LEFT JOIN paket_internet pk ON p.paket_id = pk.id
+        LEFT JOIN routers r ON pk.router_id = r.id"
+        . $where .
+        " ORDER BY
+            CASE p.tipe_pelanggan
+                WHEN 'vip' THEN 1
+                WHEN 'fasum' THEN 2
+                WHEN 'nardi' THEN 3
+                ELSE 4
+            END,
+            p.id_pelanggan ASC
+          LIMIT ? OFFSET ?";
+$stmt = $pdo->prepare($sql);
+$bind_idx = 1;
+foreach ($params_where as $pw) {
+    $stmt->bindValue($bind_idx++, $pw);
+}
+$stmt->bindValue($bind_idx++, $per_page, PDO::PARAM_INT);
+$stmt->bindValue($bind_idx, $offset, PDO::PARAM_INT);
 $stmt->execute();
 $pelanggan_khusus = $stmt->fetchAll();
 
@@ -475,40 +500,40 @@ foreach ($pelanggan_khusus as $p) {
     <!-- ============================================ -->
     <div class="card mb-3 shadow-sm">
         <div class="card-body">
-            <div class="row g-2">
+            <form method="get" class="row g-2" id="filterForm">
                 <div class="col-md-5">
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        <input type="text" id="searchInput" class="form-control" 
-                               placeholder="Cari ID, Nama, Paket, Router, IP...">
-                        <button class="btn btn-outline-secondary" onclick="clearSearch()" title="Clear">
+                        <input type="text" name="search" id="searchInput" class="form-control"
+                               placeholder="Cari ID / Nama / Alamat / Telp..."
+                               value="<?= htmlspecialchars($search) ?>" autocomplete="off">
+                        <?php if ($search !== '' || $filter_tipe !== ''): ?>
+                        <a href="pelanggan_khusus.php" class="btn btn-outline-secondary" title="Clear">
                             <i class="fas fa-times"></i>
-                        </button>
+                        </a>
+                        <?php endif; ?>
                     </div>
-                </div>
-                <div class="col-md-2">
-                    <select id="filterTipe" class="form-select">
-                        <option value="">Semua Tipe</option>
-                        <option value="vip">⭐ VIP</option>
-                        <option value="fasum">🏛️ FASUM</option>
-                        <option value="nardi">📡 NARDI</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select id="filterStatus" class="form-select">
-                        <option value="">Semua Status</option>
-                        <option value="online">🟢 Online</option>
-                        <option value="offline">🔴 Offline</option>
-                    </select>
                 </div>
                 <div class="col-md-3">
+                    <select name="tipe" id="filterTipe" class="form-select" onchange="this.form.submit()">
+                        <option value="">Semua Tipe</option>
+                        <option value="vip" <?= $filter_tipe == 'vip' ? 'selected' : '' ?>>⭐ VIP</option>
+                        <option value="fasum" <?= $filter_tipe == 'fasum' ? 'selected' : '' ?>>🏛️ FASUM</option>
+                        <option value="nardi" <?= $filter_tipe == 'nardi' ? 'selected' : '' ?>>📡 NARDI</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
                     <div class="text-muted align-self-center pt-2">
-                        Menampilkan <strong id="visibleCount"><?= count($pelanggan_khusus) ?></strong>
+                        Menampilkan <strong><?= count($pelanggan_khusus) ?></strong>
                         dari <strong><?= $total_khusus ?></strong> pelanggan
+                        <?php if ($search !== '' || $filter_tipe !== ''): ?>
+                            <span class="badge bg-info ms-1">terfilter</span>
+                        <?php endif; ?>
                     </div>
                 </div>
-            </div>
+            </form>
         </div>
+    </div>
     </div>
 
     <div class="card">
@@ -719,110 +744,19 @@ foreach ($pelanggan_khusus as $p) {
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
-    const filterTipe = document.getElementById('filterTipe');
-    const filterStatus = document.getElementById('filterStatus');
-    
-    if (searchInput) {
-        searchInput.addEventListener('keyup', applyFilter);
-        filterTipe.addEventListener('change', applyFilter);
-        filterStatus.addEventListener('change', applyFilter);
+    const filterForm = document.getElementById('filterForm');
+
+    // Auto-submit saat mengetik (debounce 500ms)
+    if (searchInput && filterForm) {
+        let timer = null;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timer);
+            timer = setTimeout(function() {
+                filterForm.submit();
+            }, 500);
+        });
     }
 });
-
-function applyFilter() {
-    const search = document.getElementById('searchInput').value.toLowerCase().trim();
-    const tipe = document.getElementById('filterTipe').value.toLowerCase();
-    const status = document.getElementById('filterStatus').value.toLowerCase();
-    
-    const rows = document.querySelectorAll('.table-khusus tbody tr');
-    let visible = 0;
-    
-    rows.forEach(row => {
-        // Skip baris "belum ada data"
-        if (row.querySelector('td[colspan]')) return;
-        
-        const text = row.textContent.toLowerCase();
-        const tipeCell = row.children[0]?.textContent.toLowerCase() || '';
-        const statusCell = row.children[5]?.textContent.toLowerCase() || '';
-        
-        const matchSearch = !search || text.includes(search);
-        const matchTipe = !tipe || tipeCell.includes(tipe);
-        const matchStatus = !status || statusCell.includes(status);
-        
-        if (matchSearch && matchTipe && matchStatus) {
-            row.style.display = '';
-            visible++;
-        } else {
-            row.style.display = 'none';
-        }
-    });
-    
-    document.getElementById('visibleCount').textContent = visible;
-    document.getElementById('badgeCount').textContent = visible + ' pelanggan';
-}
-
-function clearSearch() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('filterTipe').value = '';
-    document.getElementById('filterStatus').value = '';
-    applyFilter();
-}
-
-function tambahPelanggan() {
-    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Tambah Pelanggan Khusus';
-    document.getElementById('form_action').value = 'tambah_pelanggan';
-    document.getElementById('form_id').value = '';
-    document.getElementById('form_id_pelanggan').value = '';
-    document.getElementById('form_id_pelanggan').readOnly = false;
-    document.getElementById('form_nama_lengkap').value = '';
-    document.getElementById('form_tipe_pelanggan').value = 'vip';
-    document.getElementById('form_paket_id').value = '';
-    document.getElementById('form_jatuh_tempo').value = '';
-    document.getElementById('form_status').value = 'active';
-    document.getElementById('form_no_telepon').value = '';
-    document.getElementById('form_alamat').value = '';
-    document.getElementById('form_status_msg').innerHTML = '';
-    new bootstrap.Modal(document.getElementById('modalPelanggan')).show();
-}
-
-function editPelanggan(id) {
-    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit"></i> Edit Pelanggan Khusus';
-    document.getElementById('form_action').value = 'edit_data';
-    document.getElementById('form_status_msg').innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin"></i> Memuat data...</span>';
-    
-    const formData = new FormData();
-    formData.append('action', 'get_pelanggan');
-    formData.append('pelanggan_id', id);
-    
-    fetch(window.location.href, {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success && data.data) {
-            const p = data.data;
-            document.getElementById('form_id').value = p.id;
-            document.getElementById('form_id_pelanggan').value = p.id_pelanggan || '';
-            document.getElementById('form_nama_lengkap').value = p.nama_lengkap || '';
-            document.getElementById('form_tipe_pelanggan').value = p.tipe_pelanggan || 'vip';
-            document.getElementById('form_paket_id').value = p.paket_id || '';
-            document.getElementById('form_jatuh_tempo').value = p.jatuh_tempo ? p.jatuh_tempo.split(' ')[0] : '';
-            document.getElementById('form_status').value = p.status || 'active';
-            document.getElementById('form_no_telepon').value = p.no_telepon || '';
-            document.getElementById('form_alamat').value = p.alamat || '';
-            document.getElementById('form_status_msg').innerHTML = '';
-            new bootstrap.Modal(document.getElementById('modalPelanggan')).show();
-        } else {
-            alert('Gagal memuat data');
-        }
-    })
-    .catch(err => {
-        document.getElementById('form_status_msg').innerHTML = '<span class="text-danger">Error: ' + err.message + '</span>';
-    });
-}
-
 function simpanPelanggan() {
     const action = document.getElementById('form_action').value;
     const id = document.getElementById('form_id').value;
