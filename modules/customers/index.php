@@ -139,7 +139,7 @@ if (isset($_SESSION['activation_message'])) {
                         $sql = "SELECT p.id_pelanggan, p.nama_lengkap, p.alamat, p.no_telepon, p.jatuh_tempo, p.status, p.status_aktif, p.is_online, pk.nama_paket, pk.harga
                                 FROM pelanggan p
                                 LEFT JOIN paket_internet pk ON p.paket_id = pk.id" . $where . "
-                                ORDER BY p.id DESC
+                                ORDER BY p.id_pelanggan ASC
                                 LIMIT ? OFFSET ?";
                         $stmt = $pdo->prepare($sql);
                         $stmt->bindValue(1, $per_page, PDO::PARAM_INT);
