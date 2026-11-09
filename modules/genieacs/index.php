@@ -136,14 +136,13 @@ usort($all_devices, function($a, $b) use ($sort, $order) {
 // ============================================
 // PAGINATION (SERVER-SIDE)
 // ============================================
-// $limit dihapus — render semua data
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$per_page = 10;
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $total_devices = count($all_devices);
-// $total_pages dihapus — DataTables handle
-$total_pages = 1;
-$page = max(1, min($page, $total_pages));
-// $offset dihapus — DataTables handle
-$devices = $all_devices;  // Render SEMUA data
+$total_pages = max(1, (int)ceil($total_devices / $per_page));
+if ($page > $total_pages) $page = $total_pages;
+$offset = ($page - 1) * $per_page;
+$devices = array_slice($all_devices, $offset, $per_page);
 ?>
 
 <style>
@@ -323,11 +322,11 @@ jQuery(document).ready(function() {
     }
     
     dataTable = jQuery('#deviceTable').DataTable({
-        "pageLength": 25,
+        "paging": false,
+        "info": false,
         "ordering": true,
         "stateSave": false,
-        "order": [[1, 'asc']],
-        "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
+        "order": [],
         "language": {
             "search": "Cari:",
             "lengthMenu": "Tampilkan _MENU_ entri",
@@ -562,44 +561,42 @@ function testKoneksi() {
 
         <!-- Pagination -->
         <?php if ($total_pages > 1): ?>
-        <div class="pagination-nav">
-            <?php if ($page > 1): ?>
-                <a href="?page=<?= $page - 1 ?>&sort=<?= urlencode($sort) ?>&order=<?= urlencode($order) ?>&search=<?= urlencode($search) ?>">« Sebelumnya</a>
-            <?php else: ?>
-                <span class="disabled">« Sebelumnya</span>
-            <?php endif; ?>
-
-            <?php
-            $start = max(1, $page - 2);
-            $end = min($total_pages, $page + 2);
-            if ($start > 1) {
-                echo '<a href="?page=1&sort=<?= urlencode($sort) ?>&order=<?= urlencode($order) ?>&search=<?= urlencode($search) ?>">1</a>';
-                if ($start > 2) echo '<span class="disabled">...</span>';
-            }
-            for ($i = $start; $i <= $end; $i++):
-            ?>
-                <?php if ($i == $page): ?>
-                    <span class="active"><?= $i ?></span>
-                <?php else: ?>
-                    <a href="?page=<?= $i ?>&sort=<?= urlencode($sort) ?>&order=<?= urlencode($order) ?>&search=<?= urlencode($search) ?>"><?= $i ?></a>
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center">
+                <?php
+                $qs = $_GET;
+                $range = 2;
+                $start = max(1, $page - $range);
+                $end = min($total_pages, $page + $range);
+                ?>
+                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => 1])) ?>">&laquo;</a>
+                </li>
+                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page - 1])) ?>">&lsaquo;</a>
+                </li>
+                <?php if ($start > 1): ?>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
                 <?php endif; ?>
-            <?php endfor; ?>
-            <?php
-            if ($end < $total_pages) {
-                if ($end < $total_pages - 1) echo '<span class="disabled">...</span>';
-                echo '<a href="?page=' . $total_pages . '">' . $total_pages . '</a>';
-            }
-            ?>
-
-            <?php if ($page < $total_pages): ?>
-                <a href="?page=<?= $page + 1 ?>&sort=<?= urlencode($sort) ?>&order=<?= urlencode($order) ?>&search=<?= urlencode($search) ?>">Selanjutnya »</a>
-            <?php else: ?>
-                <span class="disabled">Selanjutnya »</span>
-            <?php endif; ?>
-        </div>
-        <div class="text-center mt-2">
-            <small class="text-muted">Halaman <?= $page ?> dari <?= $total_pages ?> (Total: <?= $total_devices ?> device)</small>
-        </div>
+                <?php for ($i = $start; $i <= $end; $i++): ?>
+                <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $i])) ?>"><?= $i ?></a>
+                </li>
+                <?php endfor; ?>
+                <?php if ($end < $total_pages): ?>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <?php endif; ?>
+                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page + 1])) ?>">&rsaquo;</a>
+                </li>
+                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $total_pages])) ?>">&raquo;</a>
+                </li>
+            </ul>
+            <p class="text-center text-muted small">
+                Halaman <?= $page ?> dari <?= $total_pages ?> (<?= $total_devices ?> total device)
+            </p>
+        </nav>
         <?php endif; ?>
     </div>
 </div>
