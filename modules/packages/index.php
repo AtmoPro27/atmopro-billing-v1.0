@@ -1,9 +1,5 @@
 <?php
-require_once __DIR__ . "/../../includes/auth_check.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
-    exit();
-}
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 include '../../includes/header.php';
 
@@ -54,7 +50,19 @@ if (isset($_GET['success'])) {
                     try {
                         require_once __DIR__ . "/../../config/database.php";
 $pdo = Database::getInstance()->getConnection();
-                        $stmt = $pdo->query("SELECT p.*, r.nama_router, r.ip_address FROM paket_internet p LEFT JOIN routers r ON p.router_id = r.id ORDER BY p.id DESC");
+                        // Pagination
+                        $per_page = 10;
+                        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+
+                        $total_paket = (int)$pdo->query("SELECT COUNT(*) FROM paket_internet")->fetchColumn();
+                        $total_pages = max(1, (int)ceil($total_paket / $per_page));
+                        if ($page > $total_pages) $page = $total_pages;
+                        $offset = ($page - 1) * $per_page;
+
+                        $stmt = $pdo->prepare("SELECT p.*, r.nama_router, r.ip_address FROM paket_internet p LEFT JOIN routers r ON p.router_id = r.id ORDER BY p.id DESC LIMIT ? OFFSET ?");
+                        $stmt->bindValue(1, $per_page, PDO::PARAM_INT);
+                        $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+                        $stmt->execute();
                         while ($row = $stmt->fetch()) {
                             $status_badge = ($row['is_active'] == 1) ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-danger">Inactive</span>';
                             $router_info = $row['nama_router'] ? $row['nama_router'] . ' (' . $row['ip_address'] . ')' : '<span class="text-muted">-</span>';
@@ -79,6 +87,45 @@ $pdo = Database::getInstance()->getConnection();
                 </tbody>
             </table>
         </div>
+
+        <?php if ($total_pages > 1): ?>
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center">
+                <?php
+                $qs = $_GET;
+                $range = 2;
+                $start = max(1, $page - $range);
+                $end = min($total_pages, $page + $range);
+                ?>
+                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => 1])) ?>">&laquo;</a>
+                </li>
+                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page - 1])) ?>">&lsaquo;</a>
+                </li>
+                <?php if ($start > 1): ?>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <?php endif; ?>
+                <?php for ($i = $start; $i <= $end; $i++): ?>
+                <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $i])) ?>"><?= $i ?></a>
+                </li>
+                <?php endfor; ?>
+                <?php if ($end < $total_pages): ?>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <?php endif; ?>
+                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page + 1])) ?>">&rsaquo;</a>
+                </li>
+                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $total_pages])) ?>">&raquo;</a>
+                </li>
+            </ul>
+            <p class="text-center text-muted small">
+                Halaman <?= $page ?> dari <?= $total_pages ?> (<?= $total_paket ?> total paket)
+            </p>
+        </nav>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -87,6 +134,8 @@ $pdo = Database::getInstance()->getConnection();
 <script>
 $(document).ready(function() {
     $('#packagesTable').DataTable({
+        paging: false,
+        info: false,
         language: {
             url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json'
         }

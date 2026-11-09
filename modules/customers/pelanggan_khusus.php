@@ -249,21 +249,36 @@ include '../../includes/header.php';
 // ============================================
 // AMBIL DATA PELANGGAN KHUSUS
 // ============================================
-$stmt = $pdo->query("
+// Pagination
+$per_page = 20;
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+
+// Hitung total pelanggan khusus
+$total_khusus = (int)$pdo->query("SELECT COUNT(*) FROM pelanggan WHERE tipe_pelanggan IN ('vip', 'fasum', 'nardi')")->fetchColumn();
+$total_pages = max(1, (int)ceil($total_khusus / $per_page));
+if ($page > $total_pages) $page = $total_pages;
+$offset = ($page - 1) * $per_page;
+
+// Ambil data pelanggan khusus hanya untuk halaman aktif
+$stmt = $pdo->prepare("
     SELECT p.*, pk.nama_paket, pk.harga, pk.router_id, r.nama_router
     FROM pelanggan p
     LEFT JOIN paket_internet pk ON p.paket_id = pk.id
     LEFT JOIN routers r ON pk.router_id = r.id
     WHERE p.tipe_pelanggan IN ('vip', 'fasum', 'nardi')
-    ORDER BY 
-        CASE p.tipe_pelanggan 
-            WHEN 'vip' THEN 1 
-            WHEN 'fasum' THEN 2 
+    ORDER BY
+        CASE p.tipe_pelanggan
+            WHEN 'vip' THEN 1
+            WHEN 'fasum' THEN 2
             WHEN 'nardi' THEN 3
-            ELSE 4 
+            ELSE 4
         END,
         p.id_pelanggan ASC
+    LIMIT ? OFFSET ?
 ");
+$stmt->bindValue(1, $per_page, PDO::PARAM_INT);
+$stmt->bindValue(2, $offset, PDO::PARAM_INT);
+$stmt->execute();
 $pelanggan_khusus = $stmt->fetchAll();
 
 // Ambil paket untuk dropdown
@@ -488,8 +503,8 @@ foreach ($pelanggan_khusus as $p) {
                 </div>
                 <div class="col-md-3">
                     <div class="text-muted align-self-center pt-2">
-                        Menampilkan <strong id="visibleCount"><?= count($pelanggan_khusus) ?></strong> 
-                        dari <strong><?= count($pelanggan_khusus) ?></strong> pelanggan
+                        Menampilkan <strong id="visibleCount"><?= count($pelanggan_khusus) ?></strong>
+                        dari <strong><?= $total_khusus ?></strong> pelanggan
                     </div>
                 </div>
             </div>
@@ -580,6 +595,45 @@ foreach ($pelanggan_khusus as $p) {
                     </tbody>
                 </table>
             </div>
+
+            <?php if ($total_pages > 1): ?>
+            <nav class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <?php
+                    $qs = $_GET;
+                    $range = 2;
+                    $start = max(1, $page - $range);
+                    $end = min($total_pages, $page + $range);
+                    ?>
+                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => 1])) ?>">&laquo;</a>
+                    </li>
+                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page - 1])) ?>">&lsaquo;</a>
+                    </li>
+                    <?php if ($start > 1): ?>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <?php endif; ?>
+                    <?php for ($i = $start; $i <= $end; $i++): ?>
+                    <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                        <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $i])) ?>"><?= $i ?></a>
+                    </li>
+                    <?php endfor; ?>
+                    <?php if ($end < $total_pages): ?>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <?php endif; ?>
+                    <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page + 1])) ?>">&rsaquo;</a>
+                    </li>
+                    <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $total_pages])) ?>">&raquo;</a>
+                    </li>
+                </ul>
+                <p class="text-center text-muted small">
+                    Halaman <?= $page ?> dari <?= $total_pages ?> (<?= $total_khusus ?> total pelanggan)
+                </p>
+            </nav>
+            <?php endif; ?>
         </div>
     </div>
 </div>

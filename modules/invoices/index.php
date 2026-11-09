@@ -89,18 +89,38 @@ $filter_status = isset($_GET['status']) ? $_GET['status'] : 'all';
                 </thead>
                 <tbody>
                     <?php
-                    // Query dengan filter
-                    $sql = "
-                        SELECT i.*, p.nama_lengkap, p.id_pelanggan 
-                        FROM invoice i 
-                        LEFT JOIN pelanggan p ON i.pelanggan_id = p.id 
-                    ";
+                    // Pagination
+                    $per_page = 10;
+                    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+
+                    $where = "";
+                    $params = [];
                     if ($filter_status != 'all') {
-                        $sql .= " WHERE i.status = '" . $filter_status . "' ";
+                        $where = " WHERE i.status = ? ";
+                        $params[] = $filter_status;
                     }
-                    $sql .= " ORDER BY i.id DESC";
-                    
-                    $stmt = $pdo->query($sql);
+
+                    $sql_count = "SELECT COUNT(*) FROM invoice i" . $where;
+                    $stmt_count = $pdo->prepare($sql_count);
+                    $stmt_count->execute($params);
+                    $total_tagihan = (int)$stmt_count->fetchColumn();
+                    $total_pages = max(1, (int)ceil($total_tagihan / $per_page));
+                    if ($page > $total_pages) $page = $total_pages;
+                    $offset = ($page - 1) * $per_page;
+
+                    $sql = "
+                        SELECT i.*, p.nama_lengkap, p.id_pelanggan
+                        FROM invoice i
+                        LEFT JOIN pelanggan p ON i.pelanggan_id = p.id
+                    " . $where . " ORDER BY i.id DESC LIMIT ? OFFSET ?";
+                    $stmt = $pdo->prepare($sql);
+                    $bind_idx = 1;
+                    foreach ($params as $p) {
+                        $stmt->bindValue($bind_idx++, $p);
+                    }
+                    $stmt->bindValue($bind_idx++, $per_page, PDO::PARAM_INT);
+                    $stmt->bindValue($bind_idx, $offset, PDO::PARAM_INT);
+                    $stmt->execute();
                     while ($inv = $stmt->fetch()):
                         $status_badge = '';
                         if ($inv['status'] == 'paid') {
@@ -139,6 +159,45 @@ $filter_status = isset($_GET['status']) ? $_GET['status'] : 'all';
                 </tbody>
             </table>
         </div>
+
+        <?php if ($total_pages > 1): ?>
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center">
+                <?php
+                $qs = $_GET;
+                $range = 2;
+                $start = max(1, $page - $range);
+                $end = min($total_pages, $page + $range);
+                ?>
+                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => 1])) ?>">&laquo;</a>
+                </li>
+                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page - 1])) ?>">&lsaquo;</a>
+                </li>
+                <?php if ($start > 1): ?>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <?php endif; ?>
+                <?php for ($i = $start; $i <= $end; $i++): ?>
+                <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $i])) ?>"><?= $i ?></a>
+                </li>
+                <?php endfor; ?>
+                <?php if ($end < $total_pages): ?>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <?php endif; ?>
+                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page + 1])) ?>">&rsaquo;</a>
+                </li>
+                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $total_pages])) ?>">&raquo;</a>
+                </li>
+            </ul>
+            <p class="text-center text-muted small">
+                Halaman <?= $page ?> dari <?= $total_pages ?> (<?= $total_tagihan ?> total tagihan)
+            </p>
+        </nav>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -147,13 +206,12 @@ $filter_status = isset($_GET['status']) ? $_GET['status'] : 'all';
 <script>
 $(document).ready(function() {
     $('#invoicesTable').DataTable({
-        paging: true,
-        pageLength: 10,
-        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+        paging: false,
+        info: false,
         language: {
             url: "//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json"
         },
-        order: [[0, 'desc']]
+        order: []
     });
 });
 </script>
