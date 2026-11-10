@@ -14,27 +14,6 @@ try {
 // =============================================================
 // AMBIL DATA TIKET DENGAN URUTAN TERBARU DI ATAS (created_at DESC)
 // =============================================================
-// Pagination
-$per_page = 10;
-$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-
-$where = "";
-$params_where = [];
-if ($search !== '') {
-    $where = " WHERE (t.no_ticket LIKE ? OR t.subject LIKE ? OR t.status LIKE ? OR p.nama_lengkap LIKE ? OR p.id_pelanggan LIKE ?)";
-    $kw = '%' . $search . '%';
-    $params_where = [$kw, $kw, $kw, $kw, $kw];
-}
-
-$sql_count = "SELECT COUNT(*) FROM tickets t LEFT JOIN pelanggan p ON t.pelanggan_id = p.id" . $where;
-$stmt_count = $pdo->prepare($sql_count);
-$stmt_count->execute($params_where);
-$total_tiket = (int)$stmt_count->fetchColumn();
-$total_pages = max(1, (int)ceil($total_tiket / $per_page));
-if ($page > $total_pages) $page = $total_pages;
-$offset = ($page - 1) * $per_page;
-
 $sql = "
     SELECT
         t.*,
@@ -42,17 +21,8 @@ $sql = "
         p.id_pelanggan as customer_code
     FROM tickets t
     LEFT JOIN pelanggan p ON t.pelanggan_id = p.id
-    " . $where . "
-    ORDER BY t.created_at DESC, t.id DESC
-    LIMIT ? OFFSET ?";
-$stmt = $pdo->prepare($sql);
-$bind_idx = 1;
-foreach ($params_where as $pw) {
-    $stmt->bindValue($bind_idx++, $pw);
-}
-$stmt->bindValue($bind_idx++, $per_page, PDO::PARAM_INT);
-$stmt->bindValue($bind_idx, $offset, PDO::PARAM_INT);
-$stmt->execute();
+    ORDER BY t.created_at DESC, t.id DESC";
+$stmt = $pdo->query($sql);
 $tickets = $stmt->fetchAll();
 
 // Status labels
@@ -98,21 +68,7 @@ $priorityBadges = [
         </div>
     </div>
     <div class="card-body">
-        <form method="get" class="mb-3 d-flex" id="searchForm" style="max-width:400px;">
-            <div class="input-group">
-                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                <input type="text" name="search" id="searchInput" class="form-control"
-                       placeholder="Cari no tiket / nama / ID / subject..."
-                       value="<?= htmlspecialchars($search) ?>" autocomplete="off">
-                <?php if ($search !== ''): ?>
-                <a href="index.php" class="btn btn-outline-secondary" title="Clear">
-                    <i class="fas fa-times"></i>
-                </a>
-                <?php endif; ?>
-            </div>
-        </form>
-
-        <div class="table-responsive">
+<div class="table-responsive">
             <table class="table table-bordered table-hover" id="ticketTable">
                 <thead>
                     <tr>
@@ -181,45 +137,36 @@ $priorityBadges = [
             </table>
         </div>
     </div>
-        <?php if ($total_pages > 1): ?>
-        <nav class="mt-3">
-            <ul class="pagination justify-content-center">
-                <?php
-                $qs = $_GET;
-                $range = 2;
-                $start = max(1, $page - $range);
-                $end = min($total_pages, $page + $range);
-                ?>
-                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => 1])) ?>">&laquo;</a>
-                </li>
-                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page - 1])) ?>">&lsaquo;</a>
-                </li>
-                <?php if ($start > 1): ?>
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                <?php endif; ?>
-                <?php for ($i = $start; $i <= $end; $i++): ?>
-                <li class="page-item <?= $i == $page ? 'active' : '' ?>">
-                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $i])) ?>"><?= $i ?></a>
-                </li>
-                <?php endfor; ?>
-                <?php if ($end < $total_pages): ?>
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                <?php endif; ?>
-                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page + 1])) ?>">&rsaquo;</a>
-                </li>
-                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $total_pages])) ?>">&raquo;</a>
-                </li>
-            </ul>
-            <p class="text-center text-muted small">
-                Halaman <?= $page ?> dari <?= $total_pages ?> (<?= $total_tiket ?> total tiket)
-            </p>
-        </nav>
-        <?php endif; ?>
+        
     </div>
+
+<style>
+/* Pagination DataTables — tampilan seragam */
+.dataTables_wrapper .dataTables_paginate { margin-top: 10px; }
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 5px 10px !important;
+    margin: 0 2px !important;
+    border-radius: 4px !important;
+    border: 1px solid #ddd !important;
+    background: white !important;
+    color: #0d5c1e !important;
+    font-size: 13px !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: #0d5c1e !important;
+    color: white !important;
+    border-color: #0d5c1e !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #0d5c1e !important;
+    color: white !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+    background: #f5f5f5 !important;
+    color: #999 !important;
+}
+.dataTables_wrapper .dataTables_info { font-size: 13px; color: #666; }
+</style>
 
 <script>
 $(document).ready(function() {
@@ -227,30 +174,17 @@ $(document).ready(function() {
     // SOLUSI: Nonaktifkan sorting default, urutan dari query
     // =============================================================
     $('#ticketTable').DataTable({
-        "paging": false,
-        "info": false,
-        "searching": false,
+        "paging": true,
+        "pageLength": 10,
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+        "info": true,
+        "searching": true,
+        "ordering": true,
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Indonesian.json"
         },
-        "order": [],
-        "columnDefs": [
-            { "orderable": false, "targets": [0, 1, 2, 3, 4, 5, 6] }
-        ]
+        "order": []
     });
-
-    // Auto-submit search (debounce 500ms)
-    const searchInput = document.getElementById('searchInput');
-    const searchForm = document.getElementById('searchForm');
-    if (searchInput && searchForm) {
-        let timer = null;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(timer);
-            timer = setTimeout(function() {
-                searchForm.submit();
-            }, 500);
-        });
-    }
 });
 </script>
 

@@ -4,6 +4,58 @@ require_once __DIR__ . '/../../includes/auth_check.php';
 include '../../includes/header.php';
 ?>
 <!-- DataTables JS — SETELAH jQuery dari header.php -->
+<style>
+/* Pagination DataTables — tampilan seragam */
+.dataTables_wrapper .dataTables_paginate { margin-top: 10px; }
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 5px 10px !important;
+    margin: 0 2px !important;
+    border-radius: 4px !important;
+    border: 1px solid #ddd !important;
+    background: white !important;
+    color: #0d5c1e !important;
+    font-size: 13px !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: #0d5c1e !important;
+    color: white !important;
+    border-color: #0d5c1e !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #0d5c1e !important;
+    color: white !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+    background: #f5f5f5 !important;
+    color: #999 !important;
+}
+.dataTables_wrapper .dataTables_info { font-size: 13px; color: #666; }
+
+/* Paksa info & pagination sejajar */
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_paginate {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    vertical-align: middle !important;
+}
+.dataTables_wrapper .dataTables_paginate {
+    justify-content: flex-end !important;
+    float: right !important;
+}
+.dataTables_wrapper .dataTables_info {
+    float: left !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    height: 32px !important;
+    line-height: 32px !important;
+    margin-top: 2px !important;
+}
+</style>
+
 <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
 <?php
@@ -133,16 +185,8 @@ usort($all_devices, function($a, $b) use ($sort, $order) {
     }
 });
 
-// ============================================
-// PAGINATION (SERVER-SIDE)
-// ============================================
-$per_page = 10;
-$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $total_devices = count($all_devices);
-$total_pages = max(1, (int)ceil($total_devices / $per_page));
-if ($page > $total_pages) $page = $total_pages;
-$offset = ($page - 1) * $per_page;
-$devices = array_slice($all_devices, $offset, $per_page);
+$devices = $all_devices;
 ?>
 
 <style>
@@ -178,11 +222,11 @@ $devices = array_slice($all_devices, $offset, $per_page);
 /* ============================================ */
 .dataTables_wrapper .dataTables_paginate {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     align-items: center;
     gap: 5px;
-    margin-top: 15px;
-    padding: 10px 0;
+    padding: 0;
+    margin: 0;
 }
 
 .dataTables_wrapper .dataTables_paginate .paginate_button {
@@ -235,8 +279,23 @@ $devices = array_slice($all_devices, $offset, $per_page);
 .dataTables_wrapper .dataTables_info {
     font-size: 13px;
     color: #666;
-    padding-top: 10px;
+    padding-top: 0;
+    display: flex;
+    align-items: center;
+    height: 36px;
 }
+/* Sejajarkan info & pagination dalam satu baris */
+.dataTables_wrapper .row:last-child {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 15px;
+}
+.dataTables_wrapper .row:last-child > div {
+    width: auto !important;
+    flex: 0 0 auto !important;
+}
+
 
 .dataTables_wrapper .dataTables_length {
     font-size: 13px;
@@ -322,9 +381,11 @@ jQuery(document).ready(function() {
     }
     
     dataTable = jQuery('#deviceTable').DataTable({
-        "paging": false,
-        "info": false,
-        "searching": false,
+        "paging": true,
+        "pageLength": 10,
+        "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
+        "info": true,
+        "searching": true,
         "ordering": true,
         "stateSave": false,
         "order": [],
@@ -344,19 +405,6 @@ jQuery(document).ready(function() {
         }
     });
     
-
-    // Auto-submit search (debounce 500ms)
-    const searchInput = document.getElementById('searchInput');
-    const searchForm = document.getElementById('searchForm');
-    if (searchInput && searchForm) {
-        let timer = null;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(timer);
-            timer = setTimeout(function() {
-                searchForm.submit();
-            }, 500);
-        });
-    }
 });
 
 function testKoneksi() {
@@ -504,26 +552,7 @@ function testKoneksi() {
         <span class="badge bg-info float-end">Total: <?= $total_devices ?> device</span>
     </div>
     <div class="card-body">
-        <!-- Search & Filter -->
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <form method="get" class="d-flex" id="searchForm">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        <input type="text" name="search" id="searchInput" class="form-control"
-                               placeholder="Cari ID / nama / SSID / IP..."
-                               value="<?= htmlspecialchars($search) ?>" autocomplete="off">
-                        <?php if (!empty($search)): ?>
-                        <a href="index.php" class="btn btn-outline-secondary" title="Clear">
-                            <i class="fas fa-times"></i>
-                        </a>
-                        <?php endif; ?>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="table-responsive">
+<div class="table-responsive">
             <table class="table table-bordered table-striped table-hover" id="deviceTable">
                 <thead>
                     <tr>

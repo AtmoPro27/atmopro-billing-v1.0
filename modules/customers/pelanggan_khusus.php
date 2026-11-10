@@ -249,62 +249,26 @@ include '../../includes/header.php';
 // ============================================
 // AMBIL DATA PELANGGAN KHUSUS
 // ============================================
-// Pagination + filter
-$per_page = 20;
-$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+// Ambil data pelanggan khusus
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $filter_tipe = isset($_GET['tipe']) ? trim($_GET['tipe']) : '';
 
-$where = " WHERE p.tipe_pelanggan IN ('vip', 'fasum', 'nardi')";
-$params_where = [];
-
-if (in_array($filter_tipe, ['vip', 'fasum', 'nardi'])) {
-    $where .= " AND p.tipe_pelanggan = ?";
-    $params_where[] = $filter_tipe;
-}
-
-if ($search !== '') {
-    $where .= " AND (p.id_pelanggan LIKE ? OR p.nama_lengkap LIKE ? OR p.alamat LIKE ? OR p.no_telepon LIKE ?)";
-    $kw = '%' . $search . '%';
-    $params_where[] = $kw;
-    $params_where[] = $kw;
-    $params_where[] = $kw;
-    $params_where[] = $kw;
-}
-
-// Hitung total
-$sql_count = "SELECT COUNT(*) FROM pelanggan p" . $where;
-$stmt_count = $pdo->prepare($sql_count);
-$stmt_count->execute($params_where);
-$total_khusus = (int)$stmt_count->fetchColumn();
-$total_pages = max(1, (int)ceil($total_khusus / $per_page));
-if ($page > $total_pages) $page = $total_pages;
-$offset = ($page - 1) * $per_page;
-
-// Ambil data hanya halaman aktif
 $sql = "SELECT p.*, pk.nama_paket, pk.harga, pk.router_id, r.nama_router
         FROM pelanggan p
         LEFT JOIN paket_internet pk ON p.paket_id = pk.id
-        LEFT JOIN routers r ON pk.router_id = r.id"
-        . $where .
-        " ORDER BY
+        LEFT JOIN routers r ON pk.router_id = r.id
+        WHERE p.tipe_pelanggan IN ('vip', 'fasum', 'nardi')
+        ORDER BY
             CASE p.tipe_pelanggan
                 WHEN 'vip' THEN 1
                 WHEN 'fasum' THEN 2
                 WHEN 'nardi' THEN 3
                 ELSE 4
             END,
-            p.id_pelanggan ASC
-          LIMIT ? OFFSET ?";
-$stmt = $pdo->prepare($sql);
-$bind_idx = 1;
-foreach ($params_where as $pw) {
-    $stmt->bindValue($bind_idx++, $pw);
-}
-$stmt->bindValue($bind_idx++, $per_page, PDO::PARAM_INT);
-$stmt->bindValue($bind_idx, $offset, PDO::PARAM_INT);
-$stmt->execute();
+            p.id_pelanggan ASC";
+$stmt = $pdo->query($sql);
 $pelanggan_khusus = $stmt->fetchAll();
+$total_khusus = count($pelanggan_khusus);
 
 // Ambil paket untuk dropdown
 $stmt_paket = $pdo->query("
@@ -495,47 +459,6 @@ foreach ($pelanggan_khusus as $p) {
         </button>
     </div>
 
-    <!-- ============================================ -->
-    <!-- FORM PENCARIAN & FILTER -->
-    <!-- ============================================ -->
-    <div class="card mb-3 shadow-sm">
-        <div class="card-body">
-            <form method="get" class="row g-2" id="filterForm">
-                <div class="col-md-5">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        <input type="text" name="search" id="searchInput" class="form-control"
-                               placeholder="Cari ID / Nama / Alamat / Telp..."
-                               value="<?= htmlspecialchars($search) ?>" autocomplete="off">
-                        <?php if ($search !== '' || $filter_tipe !== ''): ?>
-                        <a href="pelanggan_khusus.php" class="btn btn-outline-secondary" title="Clear">
-                            <i class="fas fa-times"></i>
-                        </a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <select name="tipe" id="filterTipe" class="form-select" onchange="this.form.submit()">
-                        <option value="">Semua Tipe</option>
-                        <option value="vip" <?= $filter_tipe == 'vip' ? 'selected' : '' ?>>⭐ VIP</option>
-                        <option value="fasum" <?= $filter_tipe == 'fasum' ? 'selected' : '' ?>>🏛️ FASUM</option>
-                        <option value="nardi" <?= $filter_tipe == 'nardi' ? 'selected' : '' ?>>📡 NARDI</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <div class="text-muted align-self-center pt-2">
-                        Menampilkan <strong><?= count($pelanggan_khusus) ?></strong>
-                        dari <strong><?= $total_khusus ?></strong> pelanggan
-                        <?php if ($search !== '' || $filter_tipe !== ''): ?>
-                            <span class="badge bg-info ms-1">terfilter</span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-    </div>
-
     <div class="card">
         <div class="card-header bg-warning text-dark">
             <i class="fas fa-star"></i> Daftar Pelanggan Khusus
@@ -621,44 +544,7 @@ foreach ($pelanggan_khusus as $p) {
                 </table>
             </div>
 
-            <?php if ($total_pages > 1): ?>
-            <nav class="mt-3">
-                <ul class="pagination justify-content-center">
-                    <?php
-                    $qs = $_GET;
-                    $range = 2;
-                    $start = max(1, $page - $range);
-                    $end = min($total_pages, $page + $range);
-                    ?>
-                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => 1])) ?>">&laquo;</a>
-                    </li>
-                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page - 1])) ?>">&lsaquo;</a>
-                    </li>
-                    <?php if ($start > 1): ?>
-                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                    <?php endif; ?>
-                    <?php for ($i = $start; $i <= $end; $i++): ?>
-                    <li class="page-item <?= $i == $page ? 'active' : '' ?>">
-                        <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $i])) ?>"><?= $i ?></a>
-                    </li>
-                    <?php endfor; ?>
-                    <?php if ($end < $total_pages): ?>
-                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                    <?php endif; ?>
-                    <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $page + 1])) ?>">&rsaquo;</a>
-                    </li>
-                    <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?<?= http_build_query(array_merge($qs, ['page' => $total_pages])) ?>">&raquo;</a>
-                    </li>
-                </ul>
-                <p class="text-center text-muted small">
-                    Halaman <?= $page ?> dari <?= $total_pages ?> (<?= $total_khusus ?> total pelanggan)
-                </p>
-            </nav>
-            <?php endif; ?>
+            
         </div>
     </div>
 </div>
@@ -739,24 +625,6 @@ foreach ($pelanggan_khusus as $p) {
 </div>
 
 <script>
-// ============================================
-// PENCARIAN & FILTER
-// ============================================
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('searchInput');
-    const filterForm = document.getElementById('filterForm');
-
-    // Auto-submit saat mengetik (debounce 500ms)
-    if (searchInput && filterForm) {
-        let timer = null;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(timer);
-            timer = setTimeout(function() {
-                filterForm.submit();
-            }, 500);
-        });
-    }
-});
 function simpanPelanggan() {
     const action = document.getElementById('form_action').value;
     const id = document.getElementById('form_id').value;
@@ -900,4 +768,62 @@ function hapusPelanggan(id, nama) {
 }
 </script>
 
+<style>
+/* Pagination DataTables — tampilan seragam */
+.dataTables_wrapper .dataTables_paginate { margin-top: 10px; }
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 5px 10px !important;
+    margin: 0 2px !important;
+    border-radius: 4px !important;
+    border: 1px solid #ddd !important;
+    background: white !important;
+    color: #0d5c1e !important;
+    font-size: 13px !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: #0d5c1e !important;
+    color: white !important;
+    border-color: #0d5c1e !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #0d5c1e !important;
+    color: white !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+    background: #f5f5f5 !important;
+    color: #999 !important;
+}
+.dataTables_wrapper .dataTables_info { font-size: 13px; color: #666; }
+</style>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script>
+$(document).ready(function() {
+    var table = $('.table-khusus');
+    if (table.length) {
+        table.DataTable({
+            "paging": true,
+            "pageLength": 10,
+            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+            "info": true,
+            "searching": true,
+            "ordering": true,
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json"
+            },
+            "order": []
+        });
+    }
+});
+</script>
+
 <?php include '../../includes/footer.php'; ?>
+<style>
+/* Fix DataTables wrapper agar tidak keluar container */
+.dataTables_wrapper { width: 100% !important; }
+.dataTables_wrapper .dataTables_filter,
+.dataTables_wrapper .dataTables_length { margin-bottom: 8px; }
+.dataTables_wrapper .dataTables_filter input { margin-left: 5px; }
+</style>
