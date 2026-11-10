@@ -1396,7 +1396,8 @@ LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 INSERT INTO `users` VALUES
 (16,'admin','$2y$10$A9oZE8wmQIHduN5sf1tDwuANVDOLWzZnEK7axx5xB2bOugJ/.Zpaa','Administrator','super_admin','admin@demo.local','628123456789',NULL,1,1,NULL,'2026-10-07 13:03:59'),
-(17,'teknisi','$2y$10$A9oZE8wmQIHduN5sf1tDwuANVDOLWzZnEK7axx5xB2bOugJ/.Zpaa','Teknisi Demo','teknisi','teknisi@demo.local','628123456790',NULL,1,1,NULL,'2026-10-07 13:03:59');
+(17,'teknisi','$2y$10$A9oZE8wmQIHduN5sf1tDwuANVDOLWzZnEK7axx5xB2bOugJ/.Zpaa','Teknisi Demo','teknisi','teknisi@demo.local','628123456790',NULL,1,1,NULL,'2026-10-07 13:03:59'),
+(18,'kasir','$2y$10$A9oZE8wmQIHduN5sf1tDwuANVDOLWzZnEK7axx5xB2bOugJ/.Zpaa','Kasir Demo','kasir','kasir@demo.local','628123456791',NULL,1,1,NULL,'2026-10-07 13:03:59');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1527,13 +1528,3 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-10-11  0:05:30
-
--- ============================================================
--- UPDATE v1.2: Kolom tambahan untuk tabel invoice
--- ============================================================
-
-ALTER TABLE `invoice`
-  ADD COLUMN IF NOT EXISTS `jumlah_unik` decimal(15,2) DEFAULT NULL AFTER `jumlah`,
-  ADD COLUMN IF NOT EXISTS `metode_bayar` enum('TUNAI','TRANSFER','PAYMENT GATEWAY') DEFAULT NULL AFTER `status`,
-  ADD COLUMN IF NOT EXISTS `paid_by` varchar(100) DEFAULT NULL AFTER `tgl_bayar`,
-  ADD COLUMN IF NOT EXISTS `jatuh_tempo_sebelum` datetime DEFAULT NULL AFTER `tgl_jatuh_tempo`;

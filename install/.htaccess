@@ -1,0 +1,9 @@
+# Blokir akses langsung ke file SQL
+<Files "*.sql">
+    Require all denied
+</Files>
+
+# Blokir akses ke file tersembunyi
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
