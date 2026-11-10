@@ -16,16 +16,36 @@ Sistem billing ISP dengan fitur:
 
 ## Instalasi
 
-1. Copy file ke `/var/www/domain-anda`
+### Cara Cepat — Web Installer (Rekomendasi)
+
+1. Extract source ke `/var/www/domain-anda`
+2. Buat database & user di MySQL/MariaDB
+3. Konfigurasi Nginx/Apache
+4. Buka **`https://domain-anda.com/install/`** di browser
+5. Isi form (DB Host, DB Name, DB User, DB Pass, Base URL)
+6. Klik **Install Sekarang** — installer otomatis:
+   - Tes koneksi database
+   - Import `install/database.sql`
+   - Membuat file `.env`
+7. **Hapus folder `/install/`** (WAJIB, untuk keamanan)
+8. Set permission: `chmod 640 .env && chmod -R 755 uploads/ cache/ logs/`
+9. Setup cron (copy isi `install/cron.txt` ke crontab)
+10. Login: `admin` / `admin123`
+
+### Cara Manual — Edit `.env`
+
+Jika tidak bisa akses browser installer:
+
+1. Extract source ke `/var/www/domain-anda`
 2. Buat database & user
-3. Import `database.sql`
-4. Copy `.env.example` ke `.env`, sesuaikan
-5. Set permission: `chown -R www-data:www-data .`
-6. Konfigurasi nginx (lihat contoh di folder `docs/`)
-7. Setup cron (lihat `cron/README.md`)
-8. Login: `admin` / `admin123`
+3. Import `install/database.sql`
+4. `cp install/.env.example .env` lalu edit sesuai server
+5. Set permission, konfigurasi nginx, setup cron
+6. Login: `admin` / `admin123`
 
 ⚠️ **GANTI PASSWORD SETELAH LOGIN PERTAMA!**
+
+📖 **Panduan lengkap**: lihat `PANDUAN_INSTALASI.txt`
 
 ## Login Default
 
