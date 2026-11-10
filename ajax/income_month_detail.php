@@ -13,7 +13,7 @@ $pdo = Database::getInstance()->getConnection();
     echo '<div class="table-responsive">
     <table class="table table-bordered table-striped">
         <thead class="table-light">
-            <tr><th>No Invoice</th><th>Pelanggan</th><th>Jumlah</th><th>Tanggal Bayar</th></tr>
+            <tr><th>No Invoice</th><th>Pelanggan</th><th>Jumlah</th><th>Tanggal Bayar</th><th>Metode</th><th>Diterima Oleh</th></tr>
         </thead>
         <tbody>';
     foreach($data as $row) {
@@ -22,6 +22,8 @@ $pdo = Database::getInstance()->getConnection();
             <td>{$row['nama_lengkap']}</td>
             <td>Rp " . number_format($row['jumlah'], 0, ',', '.') . "</td>
             <td>" . date('d-m-Y', strtotime($row['tgl_bayar'])) . "</td>
+            <td>" . htmlspecialchars($row['metode_bayar'] ?? '-') . "</td>
+            <td>" . htmlspecialchars($row['paid_by'] ?? '-') . "</td>
         </tr>";
     }
     if(count($data)==0) echo "<tr><td colspan='4' class='text-center'>Belum ada pembayaran bulan ini</td></tr>";

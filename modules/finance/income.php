@@ -405,18 +405,18 @@ try {
                     <form method="GET" action="export_income.php" style="display:inline-block; margin:0;">
                         <input type="hidden" name="mode" value="harian">
                         <input type="hidden" name="tanggal" value="<?= date("Y-m-d") ?>">
-                        <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i> Export Harian</button>
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-file-pdf"></i> Export Harian</button>
                     </form>
                     <form method="GET" action="export_income.php" style="display:inline-block; margin:0;">
                         <input type="hidden" name="mode" value="bulanan">
                         <input type="hidden" name="bulan" value="<?= date("m") ?>">
                         <input type="hidden" name="tahun" value="<?= date("Y") ?>">
-                        <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i> Export Bulanan</button>
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-file-pdf"></i> Export Bulanan</button>
                     </form>
                     <form method="GET" action="export_income.php" style="display:inline-block; margin:0;">
                         <input type="hidden" name="mode" value="tahunan">
                         <input type="hidden" name="tahun" value="<?= date("Y") ?>">
-                        <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i> Export Tahunan</button>
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-file-pdf"></i> Export Tahunan</button>
                     </form>
                     <span class="mx-2">|</span>
                     <a href="report_daily.php" class="btn btn-outline-primary btn-sm">Laporan Harian</a>

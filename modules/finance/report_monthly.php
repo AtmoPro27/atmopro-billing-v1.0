@@ -1,9 +1,5 @@
 <?php
-require_once __DIR__ . "/../../includes/auth_check.php";
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /index.php");
-    exit();
-}
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 include '../../includes/header.php';
 
@@ -117,7 +113,7 @@ $pdo = Database::getInstance()->getConnection();
                         <div class="table-responsive">
                             <table class="table table-sm table-bordered">
                                 <thead class="table-light">
-                                    <tr><th>No Invoice</th><th>Pelanggan</th><th>Jumlah</th><th>Tgl Bayar</th></tr>
+                                    <tr><th>No Invoice</th><th>Pelanggan</th><th>Jumlah</th><th>Tgl Bayar</th><th>Metode</th><th>Diterima Oleh</th></tr>
                                 </thead>
                                 <tbody>
                                     <?php if (count($invoices) > 0): ?>
@@ -127,10 +123,12 @@ $pdo = Database::getInstance()->getConnection();
                                                 <td><?= htmlspecialchars($inv['nama_lengkap'] ?? '-') ?> </small></small>
                                                 <td>Rp <?= number_format($inv['jumlah'], 0, ',', '.') ?> </small></small>
                                                 <td><?= date('d-m-Y H:i:s', strtotime($inv['tgl_bayar'])) ?> </small></small>
+                                                <td><?= htmlspecialchars($inv['metode_bayar'] ?? '-') ?> </small></small>
+                                                <td><?= htmlspecialchars($inv['paid_by'] ?? '-') ?> </small></small>
                                             </tr>
                                         <?php endforeach; ?>
                                     <?php else: ?>
-                                        <tr><td colspan="4" class="text-center">Belum ada data pembayaran</small></small> </small></tr>
+                                        <tr><td colspan="6" class="text-center">Belum ada data pembayaran</small></small> </small></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
