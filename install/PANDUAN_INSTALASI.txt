@@ -1,0 +1,201 @@
+========================================
+PANDUAN INSTALASI
+BILLING SYSTEM ISP — AtmoPro V1.2
+========================================
+Versi: 1.2
+Tanggal: 2026-11-10
+
+========================================
+FILE YANG DISERTAKAN
+========================================
+1. billing-system-complete-*.tar.gz  -> Source code
+2. install/database.sql               -> Database (struktur + sample + 3 user default)
+3. install/.env.example               -> Template konfigurasi
+4. install/cron.txt                   -> Daftar cron jobs
+5. README.md                          -> Dokumentasi
+6. CHANGELOG.md                       -> Riwayat update
+7. PANDUAN_INSTALASI.txt              -> File ini
+
+========================================
+REQUIREMENT
+========================================
+- PHP 8.1+ (ekstensi: pdo_mysql, curl, json, mbstring, gd, zip)
+- MariaDB 10.5+ / MySQL 8+
+- Nginx / Apache
+- OS: Ubuntu 22.04 / 24.04 (recommended)
+
+========================================
+LANGKAH INSTALASI (CARA CEPAT — WEB INSTALLER)
+========================================
+
+1. EXTRACT SOURCE
+   mkdir -p /var/www/domain-anda
+   tar -xzf billing-system-complete-*.tar.gz -C /var/www/domain-anda
+   cd /var/www/domain-anda
+
+2. BUAT DATABASE & USER (via terminal)
+   mysql -u root -p
+   > CREATE DATABASE nama_database CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   > CREATE USER 'user_database'@'localhost' IDENTIFIED BY 'password_kuat';
+   > GRANT ALL PRIVILEGES ON nama_database.* TO 'user_database'@'localhost';
+   > FLUSH PRIVILEGES;
+   > EXIT;
+
+   CATATAN PASSWORD:
+   Jika server menggunakan password policy (simple_password_check),
+   gunakan password tanpa karakter khusus yang ditolak.
+   Contoh aman: Test123456
+
+3. KONFIGURASI NGINX / APACHE
+   Pastikan domain sudah mengarah ke folder instalasi
+   dan PHP sudah berjalan.
+
+4. BUKA INSTALLER DI BROWSER
+   Buka: https://domain-anda.com/install/
+   
+   Isi form:
+   - DB Host     : localhost
+   - DB Name     : nama_database (yang dibuat di step 2)
+   - DB User     : user_database
+   - DB Password : password_kuat
+   - Base URL    : https://domain-anda.com
+   - Timezone    : Asia/Jakarta
+
+   Klik "INSTALL SEKARANG"
+   Installer akan otomatis:
+   - Tes koneksi database
+   - Import database.sql (struktur + sample)
+   - Membuat file .env
+
+5. HAPUS FOLDER /install/ (WAJIB!)
+   rm -rf /var/www/domain-anda/install/
+   
+   PENTING: Folder installer harus dihapus untuk keamanan.
+
+6. SET PERMISSION
+   chmod 640 /var/www/domain-anda/.env
+   chmod -R 755 /var/www/domain-anda/uploads/
+   chmod -R 755 /var/www/domain-anda/cache/
+   chmod -R 755 /var/www/domain-anda/logs/
+   chown -R www-data:www-data /var/www/domain-anda/
+
+7. SETUP CRON
+   crontab -e
+   
+   Copy isi install/cron.txt (sebelum folder install dihapus!)
+   Ganti path & user sesuai server Anda.
+
+8. LOGIN
+   Buka: https://domain-anda.com/
+   
+   Akun default:
+   - Super Admin : admin    / admin123
+   - Kasir       : kasir    / admin123
+   - Teknisi     : teknisi  / admin123
+
+   !!! WAJIB GANTI PASSWORD SETELAH LOGIN PERTAMA !!!
+
+========================================
+LANGKAH INSTALASI (CARA MANUAL — TANPA WEB INSTALLER)
+========================================
+Gunakan cara ini jika tidak bisa akses browser installer.
+
+1. EXTRACT SOURCE (sama seperti cara cepat)
+
+2. BUAT DATABASE & USER (sama seperti cara cepat)
+
+3. IMPORT DATABASE MANUAL
+   mysql -u user_database -p nama_database < install/database.sql
+
+4. BUAT FILE .env
+   cp install/.env.example .env
+   nano .env
+   
+   Isi:
+   DB_HOST=localhost
+   DB_NAME=nama_database
+   DB_USER=user_database
+   DB_PASS=password_kuat
+   BASE_URL=https://domain-anda.com
+   TIMEZONE=Asia/Jakarta
+
+5. SET PERMISSION (sama seperti cara cepat)
+
+6. SETUP CRON (sama seperti cara cepat)
+
+7. LOGIN (sama seperti cara cepat)
+
+========================================
+KONFIGURASI LANJUTAN
+========================================
+
+MIKROTIK:
+- Menu Router -> Tambah Router
+- Isi IP, username, password
+- Klik Test Connection
+- Setup PPP Profile, IP Pool, Bandwidth di Billing
+- Klik Sinkronisasi MikroTik
+
+GENIEACS (opsional):
+- Install GenieACS di server terpisah/lokal
+- Settings -> GenieACS
+- URL: http://IP-GenieACS:7557
+- Username/password: kosongkan kalau tidak pakai auth
+
+WHATSAPP:
+- Settings -> WA Gateway
+- Isi URL gateway, API key, nomor pengirim
+
+TELEGRAM:
+- Buat bot via @BotFather
+- Settings -> Telegram
+- Isi token bot
+
+PAYMENT GATEWAY:
+- Settings -> Payment Gateway
+- Provider yang SUDAH SIAP PAKAI: Duitku
+- Cara aktifkan Duitku:
+  1. Daftar di https://duitku.com
+  2. Ambil Merchant Code & API Key dari dashboard
+  3. Isi di Settings -> Payment Gateway
+  4. Mode: sandbox (testing) / production (live)
+  5. Set callback URL di dashboard Duitku ke:
+     https://domain-anda.com/api/duitku_callback.php
+  6. Klik Test Connection
+
+========================================
+TROUBLESHOOTING
+========================================
+- Error "Failed to open stream": cek permission folder (langkah 6)
+- Error koneksi DB: cek DB_HOST, DB_USER, DB_PASS di .env
+- Error "Access denied" saat install: cek password user DB
+  (beberapa server menolak karakter khusus seperti !)
+- Cron tidak jalan: cek log di /var/log/*.log
+- GenieACS tidak connect: pastikan port 7557 terbuka & URL benar
+- Installer bilang "sudah terinstall": hapus file .env atau
+  akses folder /install/ langsung jika .env sudah dihapus
+
+========================================
+CATATAN KEAMANAN
+========================================
+1. Session Timeout:
+   - Auto logout setelah 30 menit idle
+   - Auto logout setelah 8 jam (absolute)
+   - Berlaku untuk admin & portal pelanggan
+
+2. Konfigurasi timeout di:
+   - includes/auth_check.php (admin)
+   - includes/auth_check_portal.php (portal)
+
+3. Session regenerate ID untuk keamanan
+4. Cache jadwal sholat per project (tidak konflik)
+5. Dashboard portal cepat (< 1 detik)
+
+========================================
+SUPPORT
+========================================
+WA: 082298411981
+Telegram: @mbahatmo
+Email: atmopro3@gmail.com
+
+========================================
