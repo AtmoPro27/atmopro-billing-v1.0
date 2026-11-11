@@ -111,7 +111,7 @@ $pdo = Database::getInstance()->getConnection();
         <?php endif; ?>
         
         <div class="mt-3">
-            <a href="print_invoice.php?id=<?= $invoice['id'] ?>" class="btn btn-info" target="_blank">
+            <a href="print_invoice.php?id=<?= $invoice['id'] ?>" class="btn btn-info">
                 <i class="fas fa-print"></i> Print Invoice
             </a>
             <?php if ($invoice['status'] != 'paid'): ?>
