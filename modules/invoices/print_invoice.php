@@ -69,7 +69,7 @@ $wa_message = str_replace("{amount}", "Rp " . number_format($invoice['jumlah'], 
 $wa_message = str_replace("{payment_date}", $tgl_bayar, $wa_message);
 $wa_message = str_replace("{paid_by}", $invoice['paid_by'] ?? '-', $wa_message);
 $wa_message = str_replace("{metode_bayar}", $invoice['metode_bayar'] ?? '-', $wa_message);
-$wa_message = str_replace("{portal_url}", "" . BASE_URL . "/portal", $wa_message);
+$wa_message = str_replace("{portal_url}", "http://klasnet.autobill.my.id/portal", $wa_message);
 $wa_message = str_replace("{wa_number}", $no_wa_kasir, $wa_message);
 $wa_message = str_replace("{tagline}", $company_tagline, $wa_message);
 $wa_message_json = json_encode($wa_message);
@@ -273,7 +273,7 @@ $wa_message_json = json_encode($wa_message);
 <div class="container mt-3 no-print">
     <div class="text-center mb-3">
         <button type="button" class="btn btn-primary" onclick="printNormal();"><i class="fas fa-print"></i> Print Biasa (A4)</button>
-        <a href="print_invoice_thermal_pdf.php?id=<?= $invoice['id'] ?>" target="_blank" class="btn btn-info"><i class="fas fa-receipt"></i> Print Termal (58mm)</a>
+        <button type="button" class="btn btn-info" onclick="printThermal(<?= $invoice['id'] ?>)"><i class="fas fa-receipt"></i> Print Termal (58mm)</button>
         <button type="button" class="btn btn-success" onclick="printA5();"><i class="fas fa-file"></i> Print A5 (1/2 A4)</button>
         <button type="button" class="btn btn-wa" onclick="sendWA();"><i class="fab fa-whatsapp"></i> Kirim WhatsApp</button>
         <a href="index.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Kembali</a>
@@ -372,7 +372,7 @@ $wa_message_json = json_encode($wa_message);
     <div class="text-center mt-3" style="font-size: 12px;">
         <p class="mb-1">
             Pembayaran / gangguan klik: 
-            <a href="https://demo.atmopro.my.id/portal">https://demo.atmopro.my.id/portal</a>
+            <a href="https://klasnet.autobill.my.id/portal">https://klasnet.autobill.my.id/portal</a>
         </p>
         <p class="mb-2">
             Konfirmasi pembayaran: <strong><?= $no_wa_kasir ?></strong>
@@ -448,6 +448,35 @@ function sendWA() {
     var message = <?= $wa_message_json ?>;
     var url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(message);
     window.open(url, '_blank');
+}
+
+function printThermal(invoiceId) {
+    // Hapus iframe lama kalau ada
+    var oldIframe = document.getElementById('thermal-iframe');
+    if (oldIframe) oldIframe.remove();
+
+    var iframe = document.createElement('iframe');
+    iframe.id = 'thermal-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.src = 'print_invoice_thermal_pdf.php?id=' + invoiceId;
+
+    iframe.onload = function() {
+        setTimeout(function() {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch (e) {
+                alert('Gagal membuka dialog print: ' + e.message);
+            }
+        }, 300);
+    };
+
+    document.body.appendChild(iframe);
 }
 </script>
 

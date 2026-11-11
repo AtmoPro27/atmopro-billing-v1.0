@@ -43,7 +43,7 @@ $settings = [];
 foreach ($stmt->fetchAll() as $row) {
     $settings[$row['key_setting']] = $row['value'];
 }
-$company_name    = $settings['company_name'] ?? 'AtmoBilling';
+$company_name    = $settings['company_name'] ?? 'Klasnet';
 $company_tagline = $settings['company_tagline'] ?? '';
 $company_address = $settings['company_address'] ?? '';
 $company_phone   = $settings['company_phone'] ?? '';
@@ -72,16 +72,16 @@ $html = '
 <html>
 <head>
 <style>
-    @page { margin: 2mm; }
-    body { font-family: Arial, sans-serif; font-size: 8px; margin: 0; padding: 14px 0 0 0; }
+    @page { margin: 0; }
+    body { font-family: Arial, sans-serif; font-size: 9px; font-weight: 600; margin: 0; padding: 1px 0 25px 0; }
     .center { text-align: center; }
-    .bold { font-weight: bold; }
+    .bold { font-weight: 700; }
     .line { border-top: 1px dashed #000; margin: 3px 0; }
     table { width: 100%; border-collapse: collapse; }
-    td { padding: 1px 0; vertical-align: top; font-size: 8px; }
+    td { padding: 1px 1px; vertical-align: top; font-size: 9px; font-weight: 600; word-wrap: break-word; overflow-wrap: break-word; }
     .right { text-align: right; }
     .logo { max-height: 30px; max-width: 40px; }
-    .small { font-size: 7px; color: #333; }
+    .small { font-size: 8px; color: #000; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -94,7 +94,7 @@ $html = '
     <div class="line"></div>
 
     <table>
-        <tr><td width="35%">No Invoice</td><td>: ' . htmlspecialchars($invoice['no_invoice']) . '</td></tr>
+        <tr><td>No Invoice</td><td>: ' . htmlspecialchars($invoice['no_invoice']) . '</td></tr>
         <tr><td>Tgl Terbit</td><td>: ' . $tgl_terbit . '</td></tr>
         <tr><td>Jatuh Tempo</td><td>: ' . $tgl_tempo . '</td></tr>
         <tr><td>Nama</td><td>: ' . htmlspecialchars($invoice['nama_lengkap']) . '</td></tr>
@@ -103,7 +103,7 @@ $html = '
     <div class="line"></div>
 
     <table>
-        <tr><td width="60%">' . htmlspecialchars($invoice['nama_paket']) . '</td><td class="right">Rp ' . number_format($invoice['jumlah'], 0, ',', '.') . '</td></tr>
+        <tr><td>' . htmlspecialchars($invoice['nama_paket']) . '</td><td class="right">Rp ' . number_format($invoice['jumlah'], 0, ',', '.') . '</td></tr>
         <tr><td class="bold">TOTAL</td><td class="right bold">Rp ' . number_format($invoice['jumlah'], 0, ',', '.') . '</td></tr>
     </table>
     <div class="line"></div>
@@ -119,7 +119,7 @@ $html = '
     <div class="line"></div>
     <div class="center small" style="word-break: break-all;">
         Pembayaran / gangguan klik:<br>
-        https://demo.atmopro.my.id/portal<br>
+        https://klasnet.autobill.my.id/portal<br>
         Konfirmasi pembayaran:<br>
         ' . htmlspecialchars($no_wa_kasir) . '
     </div>
@@ -137,7 +137,7 @@ $options->set('isHtml5ParserEnabled', true);
 
 $dompdf = new Dompdf($options);
 // 58mm = 164.4pt, tinggi 600pt (~21cm) dengan auto
-$dompdf->setPaper([0, 0, 164.4, 230], 'portrait');
+$dompdf->setPaper([0, 0, 130, 250], 'portrait');
 $dompdf->loadHtml($html);
 $dompdf->render();
 $dompdf->stream('struk_' . $invoice['no_invoice'] . '.pdf', ['Attachment' => false]);
