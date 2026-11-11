@@ -22,7 +22,7 @@ if (empty($username) || empty($password)) {
     exit();
 }
 
-$stmt = $pdo->prepare("SELECT id, username, password, role, is_active FROM users WHERE username = ?");
+$stmt = $pdo->prepare("SELECT id, username, fullname, password, role, is_active FROM users WHERE username = ?");
 $stmt->execute([$username]);
 $user = $stmt->fetch();
 
@@ -36,7 +36,8 @@ if ($user && password_verify($password, $user['password'])) {
     session_regenerate_id(true);
 
     $_SESSION['user_id']       = $user['id'];
-    $_SESSION['user_name']     = $user['username'];
+    $_SESSION['user_name']     = $user['fullname'] ?? $user['username'];
+    $_SESSION['username']      = $user['username'];
     $_SESSION['user_role']     = $user['role'];
     $_SESSION['login_time']    = time();   // untuk absolute timeout
     $_SESSION['last_activity'] = time();   // untuk idle timeout

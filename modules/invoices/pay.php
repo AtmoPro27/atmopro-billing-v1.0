@@ -27,7 +27,7 @@ $pdo = Database::getInstance()->getConnection();
         $pelanggan_id = $invoice_data['pelanggan_id'];
 
         $stmt = $pdo->prepare("UPDATE invoice SET status = 'paid', tgl_bayar = ?, paid_by = ?, metode_bayar = ? WHERE id = ?");
-        $stmt->execute([$tgl_bayar, $_SESSION['username'] ?? 'system', $metode_bayar, $id]);
+        $stmt->execute([$tgl_bayar, $_SESSION['user_name'] ?? $_SESSION['username'] ?? 'system', $metode_bayar, $id]);
 
         // Catat log pembayaran
         include '../../includes/activity_log.php';

@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['confirm_payment'])) {
 
         // Update invoice menjadi paid
         $stmt = $pdo->prepare("UPDATE invoice SET status = 'paid', tgl_bayar = NOW(), paid_by = ?, metode_bayar = 'TRANSFER' WHERE id = ?");
-        $stmt->execute([$_SESSION['username'] ?? 'system', $invoice['id']]);
+        $stmt->execute([$_SESSION['user_name'] ?? $_SESSION['username'] ?? 'system', $invoice['id']]);
         error_log("Invoice updated to paid");
 
         // Update jatuh tempo pelanggan (logika sama dengan pay.php)
