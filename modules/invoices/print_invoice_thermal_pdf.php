@@ -73,21 +73,27 @@ $html = '
 <head>
 <style>
     @page { margin: 0; }
-    body { font-family: Arial, sans-serif; font-size: 9px; font-weight: 600; margin: 0; padding: 1px 0 25px 0; }
+    body, td, .small, .bold, span, div, table, tr {
+        font-family: "DejaVu Sans", Arial, sans-serif;
+        font-size: 9px;
+        font-weight: bold;
+        color: #000;
+    }
+    body { margin: 0; padding: 1px 0 10px 0; }
     .center { text-align: center; }
-    .bold { font-weight: 700; }
-    .line { border-top: 1px dashed #000; margin: 3px 0; }
+    .bold { font-weight: bold; }
+    .line { border-top: 1px dashed #000; margin: 1px 0; }
     table { width: 100%; border-collapse: collapse; }
-    td { padding: 1px 1px; vertical-align: top; font-size: 9px; font-weight: 600; word-wrap: break-word; overflow-wrap: break-word; }
+    td { padding: 1px 1px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
     .right { text-align: right; }
     .logo { max-height: 30px; max-width: 40px; }
-    .small { font-size: 8px; color: #000; font-weight: 600; }
+    .small { font-size: 9px; }
 </style>
 </head>
 <body>
     <div class="center">
         ' . ($logo_path ? '<img src="' . $logo_path . '" class="logo"><br>' : '') . '
-        <span class="bold" style="font-size:10px;">' . htmlspecialchars($company_name) . '</span><br>
+        <span class="bold">' . htmlspecialchars($company_name) . '</span><br>
         <span class="small">' . htmlspecialchars($company_address) . '</span><br>
         <span class="small">Telp: ' . htmlspecialchars($company_phone) . '</span>
     </div>
@@ -114,18 +120,14 @@ $html = '
         <br><span class="small">Diterima oleh: ' . htmlspecialchars($diterima) . '</span>
     </div>
     <div class="line"></div>
-
-    <div class="center small">
-    <div class="line"></div>
-    <div class="center small" style="word-break: break-all;">
+    <div class="center small" style="word-wrap: break-word; font-size: 8px;">
         Pembayaran / gangguan klik:<br>
         https://klasnet.autobill.my.id/portal<br>
-        Konfirmasi pembayaran:<br>
-        ' . htmlspecialchars($no_wa_kasir) . '
+        Konfirmasi pembayaran: ' . htmlspecialchars($no_wa_kasir) . '
     </div>
-        ' . ($invoice['status'] == 'paid' ? 'Terima Kasih atas pembayaran Anda<br>' : '') . '
-        Simpan resi ini sebagai bukti pembayaran<br>
-        ' . htmlspecialchars($company_name) . ' - ' . htmlspecialchars($company_tagline) . '
+    <div class="center small">
+        ' . ($invoice['status'] == 'paid' ? 'TERIMA KASIH ATAS PEMBAYARAN ANDA<br>' : '') . '
+        <span class="bold">SIMPAN RESI INI SEBAGAI BUKTI PEMBAYARAN</span>
     </div>
 </body>
 </html>';
